@@ -1,0 +1,22 @@
+{
+  "name": "schoolpalm/module-bridge",
+  "description": "Core bridge between SchoolPalm and ModuleSDK module systems",
+  "type": "library",
+  "license": "MIT",
+  "autoload": {
+    "psr-4": {
+      "SchoolPalm\\ModuleBridge\\": "src/"
+    }
+  },
+  "require": {
+    "php": "^8.2"
+    
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^12.5",
+    "illuminate/support": "^12.44",
+    "illuminate/database": "^12.44",
+    "illuminate/events": "^12.44",
+    "illuminate/container": "^12.44"
+  }
+}
