@@ -142,7 +142,7 @@ abstract class AbstractModule implements ModuleContract
      *
      * @return mixed
      */
-    abstract public function performAction();
+    abstract public function performAction():mixed;
 
     /**
      * Load action handlers or submodules.

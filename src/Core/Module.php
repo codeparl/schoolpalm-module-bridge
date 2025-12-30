@@ -24,7 +24,7 @@ abstract class Module extends AbstractModule
      *
      * Implemented by the runtime BaseModule.
      */
-    abstract public function performAction();
+    abstract public function performAction(): mixed;
 
     /**
      * Resolve the Inertia / UI component path.
@@ -40,4 +40,14 @@ abstract class Module extends AbstractModule
      * Optional referer component path.
      */
     abstract public function refererComponent(): string;
+
+
+    /**
+     * Load action handlers or submodules.
+     *
+     * Concrete modules should implement logic to populate $modules.
+     *
+     * @return void
+     */
+    abstract protected function loadModules(): void;
 }
