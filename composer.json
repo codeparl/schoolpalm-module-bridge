@@ -7,7 +7,8 @@
     "authors": [
         {
             "name": "Hassan Mugabo",
-            "email": "cybarox@gmail.com"
+            "email": "cybarox@gmail.com",
+            "website":"https://github.com/codeparl"
         }
     ],
     "require": {
