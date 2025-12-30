@@ -1,28 +1,25 @@
 <?php
 
 use PHPUnit\Framework\TestCase;
+use SchoolPalm\ModuleBridge\Support\Bridge;
 use SchoolPalm\ModuleBridge\Core\AbstractModule;
+use SchoolPalm\ModuleBridge\Core\Module;
 
 /**
- * Dummy module for testing
+ * Concrete runtime BaseModule
+ * (simulates SDK or SchoolPalm runtime)
  */
-class DummyModule extends AbstractModule
+class DummyBaseModule extends AbstractModule
 {
-    public bool $actionPerformed = false;
-
-    /**
-     * Perform an action (void as per ModuleContract)
-     */
-    public function performAction(): void
+    protected function loadModules(): void
     {
-        // Example side effect to test execution
-        $this->actionPerformed = true;
-
-        // Optional: echo for output test
-        echo "dummy action";
+        // no-op
     }
 
-    protected function loadModules(): void {}
+    public function performAction(): mixed
+    {
+        return 'action executed';
+    }
 
     public function componentPath(): string
     {
@@ -31,7 +28,7 @@ class DummyModule extends AbstractModule
 
     public function moduleComponentPath(string $path = ''): string
     {
-        return 'DummyModule/' . $path;
+        return 'DummyModule/' . ltrim($path, '/');
     }
 
     public function refererComponent(): string
@@ -41,42 +38,50 @@ class DummyModule extends AbstractModule
 }
 
 /**
- * ModuleTest PHPUnit tests
+ * Tests for Module bridge
  */
 class ModuleTest extends TestCase
 {
-    public function testModuleActionExecution()
+    protected function setUp(): void
     {
-        $module = new DummyModule();
-
-        // Set context as normally done by the framework
-        $module->setContext([
-            'portal' => 'admin',
-            'moduleName' => 'students',
-            'action' => 'list',
-            'id' => 123
-        ]);
-
-        // Capture output (since performAction is void)
-        $this->expectOutputString('dummy action');
-        $module->performAction();
-
-        // Test side effect
-        $this->assertTrue($module->actionPerformed);
-
-        // Test that context is correctly set
-        $this->assertEquals('admin', $module->getPortal());
-        $this->assertEquals('students', $module->getModuleName());
-        $this->assertEquals('list', $module->getAction());
-        $this->assertEquals(123, $module->getId());
+        /**
+         * Bind the runtime BaseModule
+         * This simulates what SDK or SchoolPalm does in its ServiceProvider
+         */
+        Bridge::bind(DummyBaseModule::class);
     }
 
-    public function testModuleComponentPaths()
+    public function testComponentPathsDelegation()
     {
-        $module = new DummyModule();
+        /**
+         * This simulates:
+         * class Main extends Module {}
+         */
+        $main = new class extends Module {};
 
-        $this->assertEquals('DummyModule/Index', $module->componentPath());
-        $this->assertEquals('DummyModule/custom', $module->moduleComponentPath('custom'));
-        $this->assertEquals('', $module->refererComponent());
+        $this->assertEquals(
+            'DummyModule/Index',
+            $main->componentPath()
+        );
+
+        $this->assertEquals(
+            'DummyModule/custom',
+            $main->moduleComponentPath('custom')
+        );
+
+        $this->assertEquals(
+            '',
+            $main->refererComponent()
+        );
+    }
+
+    public function testActionDelegation()
+    {
+        $main = new class extends Module {};
+
+        $this->assertEquals(
+            'action executed',
+            $main->performAction()
+        );
     }
 }
