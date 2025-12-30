@@ -34,6 +34,11 @@ use SchoolPalm\ModuleBridge\Contracts\ModuleContract;
  */
 class Module extends AbstractModule implements ModuleContract
 {
+
+     public function __construct(array $context = [])
+{
+    parent::__construct($context);
+}
     /**
      * Dummy implementation for IDE/static analysis.
      * Real logic exists in BaseModule.

@@ -3,6 +3,7 @@
 namespace SchoolPalm\ModuleBridge\Core;
 
 use SchoolPalm\ModuleBridge\Contracts\ModuleContract;
+use SchoolPalm\ModuleBridge\Contracts\ResolverContract;
 
 /**
  * Class AbstractModule
@@ -28,18 +29,28 @@ use SchoolPalm\ModuleBridge\Contracts\ModuleContract;
  * @property string $action     Current action to execute (e.g., 'add-student')
  * @property mixed  $id         Optional record ID related to the action
  * @property array  $modules    Loaded submodules or action handlers
+ * @property ResolverContract|null $resolver Resolver used to resolve module files and components
  *
  * ─────────────────────────────────────────────────────────────
  * METHODS
  * ─────────────────────────────────────────────────────────────
- * - performAction() : void
- *      Executes the module's action lifecycle.
+ * - performAction() : mixed
+ *      Executes the module's action lifecycle (child must implement)
  *
  * - loadModules() : void
- *      Load action handler classes or submodules. To be implemented by concrete modules.
+ *      Load action handler classes or submodules (child must implement)
  *
  * - setContext(array $context) : void
- *      Injects runtime context into the module.
+ *      Injects runtime context into the module
+ *
+ * - setResolver(ResolverContract $resolver) : static
+ *      Sets the resolver implementation
+ *
+ * - getResolver() : ResolverContract
+ *      Retrieves the current resolver
+ *
+ * - hasResolver() : bool
+ *      Checks if resolver is set
  *
  * @package SchoolPalm\ModuleBridge\Core
  */
@@ -60,14 +71,13 @@ abstract class AbstractModule implements ModuleContract
     /** @var array Loaded submodules / action classes */
     protected array $modules = [];
 
+    /** @var ResolverContract|null Resolver used for module files/components */
+    protected ?ResolverContract $resolver = null;
+
     /**
      * AbstractModule constructor.
      *
-     * Accepts a runtime context array which includes:
-     * - portal
-     * - moduleName
-     * - action
-     * - id
+     * Only injects runtime context. No resolver or module loading occurs here.
      *
      * @param array<string, mixed> $context
      */
@@ -75,8 +85,12 @@ abstract class AbstractModule implements ModuleContract
     {
         $this->modules = [];
         $this->setContext($context);
-        $this->loadModules();
     }
+
+    /* -----------------------------------------------------------------
+     |  Context
+     | -----------------------------------------------------------------
+     */
 
     /**
      * Inject runtime context into the module.
@@ -95,83 +109,86 @@ abstract class AbstractModule implements ModuleContract
         }
     }
 
-    /**
-     * Get current portal
-     *
-     * @return string
+    /* -----------------------------------------------------------------
+     |  Resolver
+     | -----------------------------------------------------------------
      */
+
+    /**
+     * Set the resolver implementation.
+     *
+     * @param ResolverContract $resolver
+     * @return $this
+     */
+    public function setResolver(ResolverContract $resolver): static
+    {
+        $this->resolver = $resolver;
+        return $this;
+    }
+
+    /**
+     * Get the resolver implementation.
+     *
+     * @return ResolverContract
+     */
+    public function getResolver(): ResolverContract
+    {
+        if (! $this->resolver) {
+            throw new \RuntimeException(
+                'Module resolver has not been set.'
+            );
+        }
+
+        return $this->resolver;
+    }
+
+    /**
+     * Check if resolver is available.
+     *
+     * @return bool
+     */
+    public function hasResolver(): bool
+    {
+        return $this->resolver !== null;
+    }
+
+    /* -----------------------------------------------------------------
+     |  Getters
+     | -----------------------------------------------------------------
+     */
+
     public function getPortal(): string
     {
         return $this->portal;
     }
 
-    /**
-     * Get module name
-     *
-     * @return string
-     */
     public function getModuleName(): string
     {
         return $this->moduleName;
     }
 
-    /**
-     * Get current action
-     *
-     * @return string
-     */
     public function getAction(): string
     {
         return $this->action;
     }
 
-    /**
-     * Get optional record ID
-     *
-     * @return mixed
-     */
     public function getId(): mixed
     {
         return $this->id;
     }
 
-    /**
-     * Execute the current module action.
-     *
-     * Must be implemented by concrete modules.
-     *
-     * @return mixed
+    /* -----------------------------------------------------------------
+     |  Lifecycle Contracts (Child must implement)
+     | -----------------------------------------------------------------
      */
-    abstract public function performAction():mixed;
 
-    /**
-     * Load action handlers or submodules.
-     *
-     * Concrete modules should implement logic to populate $modules.
-     *
-     * @return void
-     */
+    abstract public function performAction(): mixed;
+
     abstract protected function loadModules(): void;
 
-    /**
-     * Resolve the module's front-end component path.
-     *
-     * @return string
-     */
     abstract public function componentPath(): string;
 
-    /**
-     * Resolve a module-relative component path.
-     *
-     * @param string $path Optional subpath relative to the module's base component
-     * @return string
-     */
     abstract public function moduleComponentPath(string $path = ''): string;
 
-    /**
-     * Optional referer component path.
-     *
-     * @return string
-     */
     abstract public function refererComponent(): string;
 }
