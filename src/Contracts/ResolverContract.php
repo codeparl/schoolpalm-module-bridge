@@ -62,4 +62,14 @@ interface ResolverContract
      * @return string Base path for the module's components.
      */
     public function resolveModuleComponentBase(string $module): string;
+
+    /**
+ * Resolve the default dashboard component path.
+ *
+ * This is used when the framework or SDK needs a module-independent dashboard view.
+ *
+ * @return string Fully-qualified path to the dashboard component.
+ */
+public function resolveDashboard(): string;
+
 }

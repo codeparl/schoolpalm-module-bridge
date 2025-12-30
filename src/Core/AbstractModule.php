@@ -7,84 +7,83 @@ use SchoolPalm\ModuleBridge\Contracts\ModuleContract;
 /**
  * Class AbstractModule
  *
- * This is the **base abstract module class** that all modules should extend
+ * This is the base abstract module class that all modules should extend
  * when using the SchoolPalm / Module Bridge architecture.
- *
- * It implements the ModuleContract and defines the common structure
- * for module execution, action handling, and contextual injection.
  *
  * ─────────────────────────────────────────────────────────────
  * PURPOSE
  * ─────────────────────────────────────────────────────────────
- * - Acts as the bridge between **SchoolPalm** core and **module-sdk**
+ * - Acts as the bridge between SchoolPalm core and module-sdk.
  * - Provides a consistent module lifecycle:
- *     1. Receive context from the framework
+ *     1. Receive runtime context (portal, moduleName, action, id)
  *     2. Load submodules or action handlers
  *     3. Execute the assigned action
- * - Modules never interact with the framework directly—they always extend
- *   this abstract class to remain framework-agnostic.
+ * - Modules never interact with Laravel or HTTP requests directly.
  *
  * ─────────────────────────────────────────────────────────────
  * PROPERTIES
  * ─────────────────────────────────────────────────────────────
- * @property string $portal     The portal or area (e.g., 'admin', 'user') where the module is executed.
- * @property string $moduleName The unique name of the module.
- * @property string $action     The current action to perform (e.g., 'create', 'update', 'delete').
- * @property mixed  $id         Optional ID related to the action (e.g., record ID). Defaults to null.
+ * @property string $portal     Portal or area where the module runs (e.g., 'admin')
+ * @property string $moduleName Unique module name (e.g., 'Students')
+ * @property string $action     Current action to execute (e.g., 'add-student')
+ * @property mixed  $id         Optional record ID related to the action
+ * @property array  $modules    Loaded submodules or action handlers
  *
  * ─────────────────────────────────────────────────────────────
  * METHODS
  * ─────────────────────────────────────────────────────────────
  * - performAction() : void
- *      Executes the module's current action. Must be implemented in concrete modules.
+ *      Executes the module's action lifecycle.
  *
  * - loadModules() : void
- *      Loads child modules or submodules. Intended to be overridden by concrete implementations.
+ *      Load action handler classes or submodules. To be implemented by concrete modules.
  *
  * - setContext(array $context) : void
- *      Dynamically injects runtime context (portal, moduleName, action, id) from the framework.
+ *      Injects runtime context into the module.
  *
  * @package SchoolPalm\ModuleBridge\Core
  */
 abstract class AbstractModule implements ModuleContract
 {
+    /** @var string Current portal (e.g., admin, teacher) */
     protected string $portal;
+
+    /** @var string Module name/key (e.g., students, exams) */
     protected string $moduleName;
+
+    /** @var string Current action (e.g., index, create, update) */
     protected string $action;
+
+    /** @var mixed Optional record ID */
     protected mixed $id = null;
 
-    /**
-     * Execute the current module action.
-     *
-     * Concrete modules must implement this method to define
-     * how the module handles its action lifecycle.
-     *
-     * @return void
-     */
-    abstract public function performAction(): void;
+    /** @var array Loaded submodules / action classes */
+    protected array $modules = [];
 
     /**
-     * Load action handlers / submodules.
+     * AbstractModule constructor.
      *
-     * Concrete modules should override this method to register
-     * child modules or action-specific handlers if needed.
-     *
-     * @return void
-     */
-    abstract protected function loadModules(): void;
-
-    /**
-     * Inject runtime context into the module.
-     *
-     * This allows the framework or module SDK to provide:
+     * Accepts a runtime context array which includes:
      * - portal
      * - moduleName
      * - action
      * - id
      *
-     * Only existing properties are updated.
+     * @param array<string, mixed> $context
+     */
+    public function __construct(array $context = [])
+    {
+        $this->modules = [];
+        $this->setContext($context);
+        $this->loadModules();
+    }
+
+    /**
+     * Inject runtime context into the module.
      *
-     * @param array<string, mixed> $context Key-value pairs of context data.
+     * Only existing properties will be updated.
+     *
+     * @param array<string, mixed> $context
      * @return void
      */
     public function setContext(array $context): void
@@ -96,25 +95,83 @@ abstract class AbstractModule implements ModuleContract
         }
     }
 
-
+    /**
+     * Get current portal
+     *
+     * @return string
+     */
     public function getPortal(): string
-{
-    return $this->portal;
-}
+    {
+        return $this->portal;
+    }
 
-public function getModuleName(): string
-{
-    return $this->moduleName;
-}
+    /**
+     * Get module name
+     *
+     * @return string
+     */
+    public function getModuleName(): string
+    {
+        return $this->moduleName;
+    }
 
-public function getAction(): string
-{
-    return $this->action;
-}
+    /**
+     * Get current action
+     *
+     * @return string
+     */
+    public function getAction(): string
+    {
+        return $this->action;
+    }
 
-public function getId(): mixed
-{
-    return $this->id;
-}
+    /**
+     * Get optional record ID
+     *
+     * @return mixed
+     */
+    public function getId(): mixed
+    {
+        return $this->id;
+    }
 
+    /**
+     * Execute the current module action.
+     *
+     * Must be implemented by concrete modules.
+     *
+     * @return mixed
+     */
+    abstract public function performAction();
+
+    /**
+     * Load action handlers or submodules.
+     *
+     * Concrete modules should implement logic to populate $modules.
+     *
+     * @return void
+     */
+    abstract protected function loadModules(): void;
+
+    /**
+     * Resolve the module's front-end component path.
+     *
+     * @return string
+     */
+    abstract public function componentPath(): string;
+
+    /**
+     * Resolve a module-relative component path.
+     *
+     * @param string $path Optional subpath relative to the module's base component
+     * @return string
+     */
+    abstract public function moduleComponentPath(string $path = ''): string;
+
+    /**
+     * Optional referer component path.
+     *
+     * @return string
+     */
+    abstract public function refererComponent(): string;
 }
