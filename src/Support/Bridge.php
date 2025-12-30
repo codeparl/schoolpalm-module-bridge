@@ -1,7 +1,7 @@
 <?php
 
 namespace SchoolPalm\ModuleBridge\Support;
-
+use SchoolPalm\ModuleBridge\Core\Module;
 use RuntimeException;
 
 /**
@@ -64,53 +64,76 @@ use RuntimeException;
  *
  * @package SchoolPalm\ModuleBridge\Support
  */
+
+
+
 final class Bridge
 {
-    /**
-     * Indicates whether the bridge has already been bound.
-     *
-     * This prevents accidental rebinding and class alias collisions.
-     */
     protected static bool $bound = false;
 
+    /** @var Module|null */
+    protected static ?Module $runtime = null;
+
     /**
-     * Bind the concrete Module base class to the shared bridge Module contract.
-     *
-     * This method must be called by the host application during bootstrapping
-     * (e.g. in a Service Provider).
-     *
-     * Example:
-     * ```
-     * Bridge::bind(\SchoolPalm\Core\Module::class);
-     * ```
-     *
-     * @param string $concreteBaseClass Fully-qualified class name of the
-     *                                  host application's Module base class.
-     *
-     * @throws RuntimeException If the provided class does not exist.
-     *
-     * @return void
+     * Bind the concrete Module base class to the bridge contract.
+     * Called ONCE by the host application.
      */
     public static function bind(string $concreteBaseClass): void
     {
-        // Prevent rebinding once the bridge is established
         if (self::$bound) {
             return;
         }
 
-        // Ensure the concrete class exists before aliasing
         if (! class_exists($concreteBaseClass)) {
             throw new RuntimeException(
                 "Cannot bind module bridge. Class {$concreteBaseClass} not found."
             );
         }
 
-        // Alias the host Module implementation to the bridge Module contract
         class_alias(
             $concreteBaseClass,
             \SchoolPalm\ModuleBridge\Core\Module::class
         );
 
         self::$bound = true;
+    }
+
+    /**
+     * Register the currently executing module instance.
+     * Called at runtime (per request).
+     */
+    public static function runtime(Module $module): void
+    {
+        self::$runtime = $module;
+    }
+
+    /**
+     * Get the active module instance.
+     */
+    public static function current(): Module
+    {
+        if (! self::$runtime) {
+            throw new RuntimeException(
+                'No module runtime registered. Did you forget Bridge::runtime()?'
+            );
+        }
+
+        return self::$runtime;
+    }
+
+    /**
+     * Check if a runtime module exists.
+     */
+    public static function hasRuntime(): bool
+    {
+        return self::$runtime !== null;
+    }
+
+    /**
+     * Clear runtime (optional, good for tests / long workers).
+     */
+    public static function clearRuntime(): void
+    {
+        self::$runtime = null;
     }
 }

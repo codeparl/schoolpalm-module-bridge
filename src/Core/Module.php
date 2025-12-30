@@ -2,52 +2,88 @@
 
 namespace SchoolPalm\ModuleBridge\Core;
 
+use SchoolPalm\ModuleBridge\Contracts\ModuleContract;
+
 /**
  * Class Module
  *
- * IDE-facing base class for all modules.
+ * Bridge / delegating base class for all SchoolPalm modules.
+ *
+ * PURPOSE:
+ * - Acts as a "bridge" between the host application and module implementations.
+ * - Satisfies IDEs and static analyzers by implementing ModuleContract.
+ * - Delegates actual logic to the host application's BaseModule via Bridge::bind().
  *
  * IMPORTANT:
- * - This class contains NO implementation
- * - Concrete behavior is provided by the host runtime
- *   (SchoolPalm Core or Module SDK) via Bridge::bind()
+ * - This class is NOT intended for runtime usage.
+ * - Any runtime execution is handled by the bound BaseModule.
+ * - Modules extending this class will transparently use BaseModule at runtime.
  *
- * Purpose:
- * - Gives modules a stable class to extend
- * - Keeps modules runtime-agnostic
- * - Satisfies static analysis tools (IDE, PHPStan, Psalm)
+ * HOW TO USE:
+ * 1. The host application calls:
+ *      Bridge::bind(App\Core\BaseModule::class);
+ * 2. Modules extend this class:
+ *      class Main extends Module {}
+ * 
+ *
+ * @package SchoolPalm\ModuleBridge\Core
+ * @author  Hassan Mugabo <cybarox@gmail.com>
+ * @license MIT
+ * @link    https://www.github.com/codeparl
+ * @date    2025-12-30
  */
-abstract class Module extends AbstractModule
+class Module extends AbstractModule implements ModuleContract
 {
     /**
-     * Execute the resolved module action.
+     * Dummy implementation for IDE/static analysis.
+     * Real logic exists in BaseModule.
      *
-     * Implemented by the runtime BaseModule.
+     * @return mixed
      */
-    abstract public function performAction(): mixed;
+    public function performAction(): mixed
+    {
+        return null;
+    }
 
     /**
-     * Resolve the Inertia / UI component path.
-     */
-    abstract public function componentPath(): string;
-
-    /**
-     * Resolve a module-relative component path.
-     */
-    abstract public function moduleComponentPath(string $path = ''): string;
-
-    /**
-     * Optional referer component path.
-     */
-    abstract public function refererComponent(): string;
-
-
-    /**
-     * Load action handlers or submodules.
+     * Dummy implementation for IDE/static analysis.
      *
-     * Concrete modules should implement logic to populate $modules.
+     * @return string
+     */
+    public function componentPath(): string
+    {
+        return '';
+    }
+
+    /**
+     * Dummy implementation for IDE/static analysis.
+     *
+     * @param string $path Optional subpath relative to module base.
+     * @return string
+     */
+    public function moduleComponentPath(string $path = ''): string
+    {
+        return '';
+    }
+
+    /**
+     * Dummy implementation for IDE/static analysis.
+     *
+     * @return string
+     */
+    public function refererComponent(): string
+    {
+        return '';
+    }
+
+    /**
+     * Dummy implementation for IDE/static analysis.
+     * Real logic exists in BaseModule.
      *
      * @return void
      */
-    abstract protected function loadModules(): void;
+    protected function loadModules(): void
+    {
+        // No-op for dummy implementation
+    }
 }
