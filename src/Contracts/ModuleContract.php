@@ -29,7 +29,7 @@ interface ModuleContract
      *
      * @return mixed
      */
-    public function performAction();
+    public function performAction():mixed;
 
     /**
      * Resolve the Inertia / UI component path for the module.

@@ -64,7 +64,7 @@ Before using the bridge, the host application (SchoolPalm core or Module SDK) mu
 use SchoolPalm\ModuleBridge\Support\Bridge;
 
 // During application bootstrapping (e.g., in a Service Provider)
-Bridge::bind(\App\Core\Module::class);
+Bridge::bind(\App\Core\BaseModule::class);
 ```
 
 This creates a class alias that allows modules extending `SchoolPalm\ModuleBridge\Core\Module` to transparently use the host application's implementation.
