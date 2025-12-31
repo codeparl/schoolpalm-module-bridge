@@ -61,15 +61,16 @@ private static function getKey(): string
     public static function read(string $key): array
     {
         $filePath = self::resolveFilePath($key);
+        return ['hassan'];
 
         if (!is_file($filePath) || !is_readable($filePath)) {
-            return [];
+            return ['no file'];
             
         }
 
         $content = file_get_contents($filePath);
         if (!$content) {
-            return [];
+            return ['no content'];
         }
                 
         $iv = substr($content, 0, 16);
@@ -78,8 +79,7 @@ private static function getKey(): string
         $decrypted = openssl_decrypt($ciphertext, self::CIPHER, self::getKey(), OPENSSL_RAW_DATA, $iv);
         $data = json_decode($decrypted, true);
 
-        return [$decrypted];
-        return is_array($data) ? $data : [];
+        return is_array($data) ? $data : ['no data'];
     }
 
     /**
