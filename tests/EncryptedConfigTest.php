@@ -56,6 +56,7 @@ class EncryptedConfigTest extends TestCase
     {
         $file = $this->tempFile('non_existing.enc');
         $readData = EncryptedConfig::read($file);
+
         $this->assertEquals([], $readData, 'Reading non-existing file should return empty array');
     }
 
@@ -65,6 +66,10 @@ class EncryptedConfigTest extends TestCase
         file_put_contents($file, 'corrupted content');
 
         $readData = EncryptedConfig::read($file);
+        
         $this->assertEquals([], $readData, 'Reading corrupted file should return empty array');
     }
+
+
+
 }

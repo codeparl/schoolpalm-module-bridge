@@ -23,6 +23,7 @@ public static function init(?string $basePath = null): void
         ? rtrim($basePath, DIRECTORY_SEPARATOR)
         : realpath(__DIR__ . '/config');
 
+        echo self::$basePath;
     if (!self::$basePath || !is_dir(self::$basePath)) {
         throw new \RuntimeException(
             'EncryptedConfig base path is invalid or missing.'
@@ -30,7 +31,11 @@ public static function init(?string $basePath = null): void
     }
 }
 
-
+private static function getKey(): string
+{
+    // Ensure key is exactly 32 bytes for AES-256-CBC
+    return substr(hash('sha256', self::KEY, true), 0, 32);
+}
     /**
      * Resolve the full file path from a key.
      * The filename is hashed to obfuscate it.
@@ -59,19 +64,21 @@ public static function init(?string $basePath = null): void
 
         if (!is_file($filePath) || !is_readable($filePath)) {
             return [];
+            
         }
 
         $content = file_get_contents($filePath);
         if (!$content) {
             return [];
         }
-
+                
         $iv = substr($content, 0, 16);
         $ciphertext = substr($content, 16);
 
-        $decrypted = openssl_decrypt($ciphertext, self::CIPHER, self::KEY, OPENSSL_RAW_DATA, $iv);
+        $decrypted = openssl_decrypt($ciphertext, self::CIPHER, self::getKey(), OPENSSL_RAW_DATA, $iv);
         $data = json_decode($decrypted, true);
 
+        return [$decrypted];
         return is_array($data) ? $data : [];
     }
 
@@ -102,7 +109,7 @@ public static function init(?string $basePath = null): void
         }
 
         $iv = openssl_random_pseudo_bytes(16);
-        $ciphertext = openssl_encrypt($json, self::CIPHER, self::KEY, OPENSSL_RAW_DATA, $iv);
+        $ciphertext = openssl_encrypt($json, self::CIPHER, self::getKey(), OPENSSL_RAW_DATA, $iv);
 
         if (!$ciphertext) {
             return false;
