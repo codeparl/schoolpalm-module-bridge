@@ -132,17 +132,7 @@ final class Helper
         return self::studly($module);
     }
 
-    public static function levelsFolderName(array $levels, array $levelCodes = []): string
-    {
-        if (count($levels) === 1) {
-            return self::studly($levels[0]);
-        }
-
-        return implode('', array_map(
-            fn(string $levelName) => $levelCodes[$levelName] ?? substr($levelName, 0, 3),
-            $levels
-        ));
-    }
+   
 
     public static function roleFolderName(string $role): string
     {
@@ -182,12 +172,8 @@ final class Helper
      */
     public static function getAcademicLevels(): array
     {
-        // Derive encrypted file path
-        $filename = EncryptedConfig::resolveFilePath('academic_levels');
-        $path = __DIR__ . DIRECTORY_SEPARATOR . $filename;
-
         // Read and return data
-        return EncryptedConfig::read($path);
+        return EncryptedConfig::read('academic_levels');
     }
     /* -------------------------------------------------
      | String Helpers (Laravel-like, PHP-pure)
