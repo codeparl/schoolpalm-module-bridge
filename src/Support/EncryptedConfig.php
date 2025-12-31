@@ -17,15 +17,19 @@ final class EncryptedConfig
      * Initialize the base path for encrypted config files.
      * Typically points to: ModuleBridge/Support/config/
      */
-    public static function init(?string $basePath = null): void
-    {
-        self::$basePath = $basePath 
-            ?? __DIR__ . DIRECTORY_SEPARATOR . 'config';
-        
-        if (!is_dir(self::$basePath)) {
-            mkdir(self::$basePath, 0777, true);
-        }
+public static function init(?string $basePath = null): void
+{
+    self::$basePath = $basePath
+        ? rtrim($basePath, DIRECTORY_SEPARATOR)
+        : realpath(__DIR__ . '/config');
+
+    if (!self::$basePath || !is_dir(self::$basePath)) {
+        throw new \RuntimeException(
+            'EncryptedConfig base path is invalid or missing.'
+        );
     }
+}
+
 
     /**
      * Resolve the full file path from a key.

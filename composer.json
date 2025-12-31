@@ -3,7 +3,7 @@
     "description": "A bridge library for SchoolPalm and Module-SDK to manage modules.",
     "type": "library",
     "license": "MIT",
-    "version": "2.0.0", 
+    "version": "2.1.0", 
     "authors": [
         {
             "name": "Hassan Mugabo",
