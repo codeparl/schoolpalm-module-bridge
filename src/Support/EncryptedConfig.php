@@ -61,16 +61,15 @@ private static function getKey(): string
     public static function read(string $key): array
     {
         $filePath = self::resolveFilePath($key);
-        return ['hassan'];
-
+ 
         if (!is_file($filePath) || !is_readable($filePath)) {
-            return ['no file'];
+            return [];
             
         }
 
         $content = file_get_contents($filePath);
         if (!$content) {
-            return ['no content'];
+            return [];
         }
                 
         $iv = substr($content, 0, 16);
