@@ -172,6 +172,23 @@ final class Helper
         return self::studly($combined);
     }
 
+
+        /**
+     * Get academic levels from encrypted config.
+     *
+     * Vendors cannot write or modify this file directly.
+     *
+     * @return array<int,array{label:string,code:string}>
+     */
+    public static function getAcademicLevels(): array
+    {
+        // Derive encrypted file path
+        $filename = EncryptedConfig::resolveFilePath('academic_levels');
+        $path = __DIR__ . DIRECTORY_SEPARATOR . $filename;
+
+        // Read and return data
+        return EncryptedConfig::read($path);
+    }
     /* -------------------------------------------------
      | String Helpers (Laravel-like, PHP-pure)
      |-------------------------------------------------*/
