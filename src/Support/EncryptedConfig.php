@@ -107,4 +107,52 @@ final class EncryptedConfig
         $content = $iv . $ciphertext;
         return file_put_contents($filePath, $content) !== false;
     }
+
+
+    /**
+ * Encrypt a raw JSON config file and remove the original file.
+ *
+ * @param string $rawFilePath Full path to the raw JSON file
+ * @param string $key         Logical key to store the config as
+ * @return bool True if success, false otherwise
+ */
+/**
+ * Encrypt a raw JSON file and remove the original.
+ *
+ * @param string $configPath  Base path where encrypted file will be saved
+ * @param string $rawFilePath Full path to the raw JSON file
+ * @param string $key         Logical key for encrypted file naming
+ * @return bool True on success, false on failure
+ */
+public static function encryptAndClean(string $configPath, string $rawFilePath, string $key): bool
+{
+    // Initialize the base path for encrypted files
+    self::init($configPath);
+
+    // Check if raw file exists and is readable
+    if (!is_file($rawFilePath) || !is_readable($rawFilePath)) {
+        return false;
+    }
+
+    $data = Helper::loadJson($rawFilePath);
+ 
+    if (!is_array($data)) {
+        return false;
+    }
+
+    // Write encrypted file
+    if (!self::write($key, $data)) {
+        return false;
+    }
+
+    // Delete original raw file (suppress errors if deletion fails)
+    if (!@unlink($rawFilePath)) {
+        // Optionally log warning here if you have a logger
+        return false;
+    }
+
+    return true;
+}
+
+
 }

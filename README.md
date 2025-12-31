@@ -22,11 +22,16 @@ Core bridge between SchoolPalm and ModuleSDK module systems. This library provid
     - [Core Classes](#core-classes)
       - [AbstractModule](#abstractmodule)
       - [Module](#module)
+      - [SchoolModel](#schoolmodel)
     - [Support Classes](#support-classes)
       - [Bridge](#bridge)
+      - [EncryptedConfig](#encryptedconfig)
+      - [Helper](#helper)
   - [Examples](#examples)
     - [Complete Module Implementation](#complete-module-implementation)
     - [Bridge Binding in Laravel Service Provider](#bridge-binding-in-laravel-service-provider)
+  - [Scripts and Tools](#scripts-and-tools)
+    - [enc.php](#encphp)
   - [License](#license)
 
 ## Installation
@@ -186,6 +191,41 @@ Abstract base class providing common module functionality.
 
 Empty abstract class that gets aliased at runtime to the host application's concrete Module class.
 
+#### SchoolModel
+
+Abstract base class extending `Illuminate\Database\Eloquent\Model` for school-related models, ensuring multi-tenant safety by automatically scoping queries to the current school.
+
+**Purpose:**
+- Provides automatic scoping of queries by `school_id` based on the `current_school` context.
+- Prevents modules from accidentally accessing data from other schools in a multi-tenant environment.
+
+**Key Features:**
+- **Global Scope**: Automatically applies a `where('school_id', ...)` filter to all queries using the current school context.
+- **Multi-Tenant Safety**: Ensures that school-specific data (e.g., Students, Teachers, Classes) is properly isolated.
+
+**Methods:**
+- `forSchool(int $schoolId): \Illuminate\Database\Eloquent\Builder` - Override the global scope to query records for a specific school explicitly.
+
+**Usage Example:**
+```php
+use SchoolPalm\ModuleBridge\Core\SchoolModel;
+
+class Student extends SchoolModel
+{
+    protected $table = 'students';
+}
+
+// Automatically scoped to current_school
+$students = Student::all();
+
+// Override scope for a specific school
+$otherSchoolStudents = Student::forSchool($schoolId)->get();
+```
+
+**Notes:**
+- The `current_school` must be resolved from the application context (e.g., via a tenant resolver or service container).
+- Vendor modules should extend `SchoolModel` for school-specific tables to ensure proper scoping in production and SDK/test environments.
+
 ### Support Classes
 
 #### Bridge
@@ -193,6 +233,92 @@ Empty abstract class that gets aliased at runtime to the host application's conc
 Static utility for binding the bridge to concrete implementations.
 
 - `bind(string $concreteBaseClass): void` - Bind concrete class to bridge (call once per request)
+
+#### EncryptedConfig
+
+Utility class for handling encrypted configuration files using AES-256-CBC encryption.
+
+**Purpose:**
+- Securely store and retrieve sensitive configuration data (e.g., academic levels).
+- Prevent unauthorized access to config files by encrypting them.
+
+**Key Features:**
+- **Encryption**: Uses AES-256-CBC with a predefined key for encrypting/decrypting data.
+- **File Obfuscation**: Hashes filenames to obscure the logical config names.
+- **Initialization**: Sets up the base path for encrypted config files.
+
+**Methods:**
+- `init(?string $basePath = null): void` - Initialize the base path for encrypted files (defaults to `src/Support/config/`).
+- `resolveFilePath(string $key): string` - Get the full path to an encrypted file based on a logical key.
+- `read(string $key): array` - Decrypt and read data from an encrypted file.
+- `write(string $key, array $data): bool` - Encrypt and write data to a file (internal use only).
+- `encryptAndClean(string $configPath, string $rawFilePath, string $key): bool` - Encrypt a raw JSON file and remove the original.
+
+**Usage Example:**
+```php
+use SchoolPalm\ModuleBridge\Support\EncryptedConfig;
+
+// Initialize (optional, defaults to src/Support/config/)
+EncryptedConfig::init('/path/to/config');
+
+// Read encrypted config
+$levels = EncryptedConfig::read('academic_levels');
+
+// Encrypt and clean raw file (internal use)
+EncryptedConfig::encryptAndClean('/config/path', '/raw/file.json', 'key');
+```
+
+**Notes:**
+- The encryption key is hardcoded and must match between SDK and SchoolPalm.
+- Vendors should never call `write()` or `encryptAndClean()` directly; these are for internal use.
+
+#### Helper
+
+Utility class providing pure PHP helper functions for common operations.
+
+**Purpose:**
+- Offer reusable functions for string manipulation, path handling, JSON operations, and module naming.
+- Ensure consistency across SchoolPalm core and Module SDK.
+
+**Key Features:**
+- **Path Helpers**: Extract segments from paths (e.g., portal, module, action).
+- **JSON Helpers**: Load/store JSON files with optional key extraction.
+- **Module Helpers**: Normalize module names, generate folder names for levels/roles/modules.
+- **String Helpers**: Laravel-like string functions (studly, kebab, snake, etc.).
+
+**Methods:**
+- `getPathSegment(string $key, ?string $path, bool $central = false): ?string` - Extract a path segment.
+- `loadJson(string $fileName, ?string $key = null, ?string $path = null): array` - Load and decode a JSON file.
+- `storeJson(string $fileName, array $data, string $path): bool` - Store data as JSON.
+- `normalizeModuleName(string $module): string` - Normalize module names to StudlyCase.
+- `levelsFolderName(array $levels, array $levelCodes = []): string` - Generate folder names for academic levels.
+- `roleFolderName(string $role): string` - Generate folder names for roles.
+- `moduleFolderName(string|array|object $module): string` - Generate folder names for modules.
+- `getAcademicLevels(): array` - Retrieve academic levels from encrypted config.
+- Various string helpers: `contains()`, `startsWith()`, `endsWith()`, `studly()`, `kebab()`, etc.
+
+**Usage Example:**
+```php
+use SchoolPalm\ModuleBridge\Support\Helper;
+
+// Path segment extraction
+$module = Helper::getPathSegment('module', 'admin/students/edit/5'); // 'students'
+
+// JSON operations
+$data = Helper::loadJson('config.json');
+Helper::storeJson('output.json', $data, '/path/to/dir');
+
+// String manipulation
+$studly = Helper::studly('hello-world'); // 'HelloWorld'
+$kebab = Helper::kebab('HelloWorld'); // 'hello-world'
+
+// Module naming
+$folder = Helper::moduleFolderName('user.management'); // 'UserManagement'
+```
+
+**Notes:**
+- All methods are static and stateless.
+- Designed to be framework-independent for maximum reusability.
 
 ## Examples
 
@@ -281,6 +407,29 @@ class ModuleBridgeServiceProvider extends ServiceProvider
     }
 }
 ```
+
+## Scripts and Tools
+
+### enc.php
+
+A command-line script for encrypting raw JSON configuration files and removing the originals.
+
+**Purpose:**
+- Encrypt sensitive configuration data (e.g., academic levels) for secure storage.
+- Automate the process of converting raw JSON files to encrypted format.
+
+**Usage:**
+```bash
+php enc.php
+```
+
+**Requirements:**
+- The raw JSON file must exist at `src/Support/config/academic_levels.json`.
+- The script uses `EncryptedConfig::encryptAndClean()` to perform the encryption.
+
+**Notes:**
+- Run this script after updating raw config files to encrypt them.
+- The original raw file is removed after successful encryption.
 
 ## License
 
