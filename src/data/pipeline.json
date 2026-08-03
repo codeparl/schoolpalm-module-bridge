@@ -1,0 +1,39 @@
+[
+  {
+    "phase": "verification",
+    "steps": [
+      { "key": "verify_module_exists", "name": "Verify Module Exists", "status": "pending", "log": "" },
+      { "key": "verify_not_installed", "name": "Verify Module Not Installed", "status": "pending", "log": "" },
+      { "key": "verify_sdk_compatibility", "name": "Verify SDK Compatibility", "status": "pending", "log": "" },
+      { "key": "verify_dependencies", "name": "Verify Dependent Modules", "status": "pending", "log": "" },
+      { "key": "verify_dependency_contracts", "name": "Verify Dependency Contracts", "status": "pending", "log": "" },
+      { "key": "verify_backend_dependencies", "name": "Verify Backend Dependencies", "status": "pending", "log": "" },
+      { "key": "verify_frontend_resources", "name": "Verify Frontend resources", "status": "pending", "log": "" }
+    ]
+  },
+  
+  {
+    "phase": "installation",
+    "steps": [
+      { "key": "move_module", "name": "Move Module to Execution Directory", "status": "pending", "log": "" },
+      { "key": "extract_frontend", "name": "Extract Frontend Bundle", "status": "pending", "log": "" },
+      { "key": "run_migrations", "name": "Run Module Migrations", "status": "pending", "log": "" },
+      { "key": "install_backend_deps", "name": "Install Backend Dependencies", "status": "pending", "log": "" }
+    ]
+  },
+  {
+    "phase": "registration",
+    "steps": [
+      { "key": "register_services", "name": "Register Module Services", "status": "pending", "log": "" },
+      { "key": "register_autoload", "name": "Register in Autoload Registry", "status": "pending", "log": "" }
+    ]
+  },
+  {
+    "phase": "finalization",
+    "steps": [
+      { "key": "mark_installed", "name": "Mark Module as Installed", "status": "pending", "log": "" },
+      { "key": "persist_record", "name": "Persist Installed Module Record", "status": "pending", "log": "" },
+      { "key": "emit_event", "name": "Emit Module Installed Event", "status": "pending", "log": "" }
+    ]
+  }
+]

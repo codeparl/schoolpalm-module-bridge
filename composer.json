@@ -1,0 +1,88 @@
+{
+    "name": "schoolpalm/module-bridge",
+    "description": "A bridge library for SchoolPalm and Module-SDK to manage modules.",
+    "type": "library",
+    "license": "MIT",
+    "version": "3.6.6",
+    "authors": [
+        {
+            "name": "Hassan Mugabo",
+            "email": "cybarox@gmail.com"
+        }
+    ],
+    "require": {
+        "php": "^8.1",
+        "composer/semver": "^3.4",
+        "nikic/php-parser": "*",
+        "doctrine/dbal": "4.4.2",
+        "opis/json-schema": "*",
+        "spatie/browsershot": "*",
+        "mpdf/mpdf": "^8.2",
+        "setasign/fpdi-fpdf": "^2.3",
+        "setasign/fpdi-tcpdf": "^2.3",
+        "schoolpalm/document-builder": "^1.0",
+        "schoolpalm/app-logger": "^1.0",
+        "schoolpalm/app-settings": "^1.0",
+        "schoolpalm/cache-store": "^1.0"
+    },
+    "autoload": {
+        "psr-4": {
+    "SchoolPalm\\ModuleBridge\\": "src/",
+    "Tests\\": "tests/"
+}
+    },
+      "extra": {
+    "laravel": {
+      "providers": [
+        "SchoolPalm\\ModuleBridge\\Providers\\ModuleBridgeServiceProvider"
+      ]
+    }
+  },
+    "autoload-dev": {
+        "psr-4": {
+            "SchoolPalm\\ModuleBridge\\Tests\\": "tests/",
+            "Workbench\\App\\": "workbench/app/",
+            "Workbench\\Database\\Factories\\": "workbench/database/factories/",
+            "Workbench\\Database\\Seeders\\": "workbench/database/seeders/"
+        }
+    },
+    "archive": {
+        "exclude": [
+            "tests"
+        ]
+    },
+    "require-dev": {
+        "illuminate/support": "^12.0",
+        "laravel/helpers": "^1.8",
+        "orchestra/testbench": "^10.0",
+        "phpunit/phpunit": "^11.5",
+        "pestphp/pest": "^3.0",
+        "pestphp/pest-plugin-laravel": "^3.0",
+        "laravel/framework": "^12"
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "config": {
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
+    "scripts": {
+        "post-autoload-dump": [
+            "@clear",
+            "@prepare"
+        ],
+        "clear": "@php vendor/bin/testbench package:purge-skeleton --ansi",
+        "prepare": "@php vendor/bin/testbench package:discover --ansi",
+        "build": "@php vendor/bin/testbench workbench:build --ansi",
+        "serve": [
+            "Composer\\Config::disableProcessTimeout",
+            "@build",
+            "@php vendor/bin/testbench serve --ansi"
+        ],
+        "test": [
+            "@clear",
+            "@php vendor/bin/pest"
+        ]
+    }
+}

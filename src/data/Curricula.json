@@ -1,0 +1,171 @@
+[
+    {
+        "id": 1,
+        "code": "CBC",
+        "name": "Competency-Based Curriculum",
+        "levels": [
+            1,
+            2
+        ],
+        "type": "Local",
+        "is_builtin": true
+    },
+    {
+        "id": 2,
+        "code": "IGCSE",
+        "name": "Cambridge IGCSE",
+        "levels": [
+            2
+        ],
+        "type": "International",
+        "is_builtin": true
+    },
+    {
+        "id": 3,
+        "code": "ALEVEL",
+        "name": "Cambridge A-Levels",
+        "levels": [
+            3
+        ],
+        "type": "International",
+        "is_builtin": true
+    },
+    {
+        "id": 4,
+        "code": "IB_PYP",
+        "name": "IB Primary Years Programme (PYP)",
+        "levels": [
+            1
+        ],
+        "type": "International",
+        "is_builtin": true
+    },
+    {
+        "id": 5,
+        "code": "IB_MYP",
+        "name": "IB Middle Years Programme (MYP)",
+        "levels": [
+            2
+        ],
+        "type": "International",
+        "is_builtin": true
+    },
+    {
+        "id": 6,
+        "code": "IB_DP",
+        "name": "IB Diploma Programme (DP)",
+        "levels": [
+            3
+        ],
+        "type": "International",
+        "is_builtin": true
+    },
+    {
+        "id": 7,
+        "code": "CBSE",
+        "name": "Central Board of Secondary Education",
+        "levels": [
+            1,
+            2
+        ],
+        "type": "National",
+        "is_builtin": true
+    },
+    {
+        "id": 8,
+        "code": "ICSE",
+        "name": "Indian Certificate of Secondary Education",
+        "levels": [
+            1,
+            2
+        ],
+        "type": "National",
+        "is_builtin": true
+    },
+    {
+        "id": 9,
+        "code": "COMMON_CORE",
+        "name": "Common Core (US Curriculum)",
+        "levels": [
+            1,
+            2
+        ],
+        "type": "International",
+        "is_builtin": true
+    },
+    {
+        "id": 10,
+        "code": "UK_NATIONAL",
+        "name": "UK National Curriculum",
+        "levels": [
+            1,
+            2
+        ],
+        "type": "National",
+        "is_builtin": true
+    },
+    {
+        "id": 11,
+        "code": "MONTESSORI",
+        "name": "Montessori Curriculum",
+        "levels": [
+            1
+        ],
+        "type": "Special",
+        "is_builtin": true
+    },
+    {
+        "id": 12,
+        "code": "WALDORF",
+        "name": "Waldorf (Steiner) Curriculum",
+        "levels": [
+            1
+        ],
+        "type": "Special",
+        "is_builtin": true
+    },
+    {
+        "id": 13,
+        "code": "TVET",
+        "name": "Technical and Vocational Education and Training",
+        "levels": [
+            2,
+            3
+        ],
+        "type": "Technical",
+        "is_builtin": true
+    },
+    {
+        "id": 14,
+        "code": "FRENCH",
+        "name": "French Curriculum (Baccalaur\u00e9at)",
+        "levels": [
+            2,
+            3
+        ],
+        "type": "International",
+        "is_builtin": true
+    },
+    {
+        "id": 15,
+        "code": "GERMAN",
+        "name": "German Curriculum (Gymnasium)",
+        "levels": [
+            2,
+            3
+        ],
+        "type": "International",
+        "is_builtin": true
+    },
+    {
+        "id": 16,
+        "code": "SINGAPORE",
+        "name": "Singapore Curriculum",
+        "levels": [
+            1,
+            2
+        ],
+        "type": "International",
+        "is_builtin": true
+    }
+]

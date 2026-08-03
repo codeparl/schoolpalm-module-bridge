@@ -1,0 +1,36 @@
+{
+  "id": 1,
+  "name": "SDK Admin User",
+  "email": "admin@sdk.test",
+  "password": null,
+
+  "settings": {
+    "theme": "light",
+    "language": "en",
+    "notifications": true
+  },
+
+  "login_type": "email",
+  "login_id": "admin@sdk.test",
+
+  "main_role_id": 1,
+
+  "default_portal": "admin",
+  "current_portal": "admin",
+
+  "must_change_password": false,
+
+  "default_school_id": 1,
+
+  "status": "active",
+
+  "owner_id": null,
+
+  "roles": [
+    "admin"
+  ],
+
+  "permissions": [
+    "all"
+  ]
+}

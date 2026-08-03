@@ -1,0 +1,19 @@
+{
+    "modules_root_path": "",
+    "modules": [
+        {
+            "zip_file": "E:\\dev-server\\www\\schoolpalm\\storage\\app/private/modules/1777139748_unnovatebrains-common-student-210.zip",
+            "zip_hash": "3457c0be48ccb0f8206702e5c1b6da4849d76a6d0d38ae5f54d6e65b641d5841",
+            "namespace": "Unnovatebrains\\Common\\Student\\Backend",
+            "relative_path": "Unnovatebrains/Common/Student",
+            "module_path": "E:\\dev-server\\www\\schoolpalm\\transit/Unnovatebrains/Common/Student",
+            "pipeline_path": "E:\\dev-server\\www\\schoolpalm\\transit/Unnovatebrains/Common/Student/pipeline.json",
+            "manifest_path": "E:\\dev-server\\www\\schoolpalm\\transit/Unnovatebrains/Common/Student/manifest.json",
+            "submit_date": "2026-04-25T20:55:48+03:00",
+            "plans": [
+                "Standard"
+            ],
+            "extracted": true
+        }
+    ]
+}

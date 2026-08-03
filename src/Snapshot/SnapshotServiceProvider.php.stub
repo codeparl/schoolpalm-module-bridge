@@ -1,0 +1,222 @@
+<?php
+
+namespace {{ namespace }}\Providers;
+
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\ServiceProvider;
+use Composer\Semver\Semver;
+
+class SnapshotServiceProvider extends ServiceProvider
+{
+    protected array $manifest = [];
+
+    public function register(): void
+    {
+        /*
+        |--------------------------------------------------------------------------
+        | Snapshot Namespace Root (for reference only)
+        |--------------------------------------------------------------------------
+        */
+        $namespace = '{{ namespace }}';
+
+        /*
+        |--------------------------------------------------------------------------
+        | Snapshot Base Path (NO AUTLOADING LOGIC HERE)
+        |--------------------------------------------------------------------------
+        */
+        $basePath = rtrim(
+            config(
+                'sdk.snapshots_path',
+                'snapshots'
+            ),
+            '/\\'
+        );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Ensure base exists
+        |--------------------------------------------------------------------------
+        */
+        File::ensureDirectoryExists($basePath);
+
+        /*
+        |--------------------------------------------------------------------------
+        | Load Manifest
+        |--------------------------------------------------------------------------
+        */
+        $basePathRoot = $basePath.'/{{ module_path }}';
+        $this->manifest = $this->loadManifest( $basePathRoot);
+
+        /*
+        |--------------------------------------------------------------------------
+        | Validate runtime (optional)
+        |--------------------------------------------------------------------------
+        */
+        // $this->validateRuntime($this->manifest);
+
+        /*
+        |--------------------------------------------------------------------------
+        | Register bindings ONLY
+        |--------------------------------------------------------------------------
+        */
+        $this->registerBindings($basePathRoot,$namespace);
+    }
+
+    public function boot(): void
+    {
+        //
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Load Manifest
+    |--------------------------------------------------------------------------
+    */
+    protected function loadManifest(string $basePath): array
+    {
+
+        $path = $basePath . '/snapshot.manifest.json';
+
+        if (!is_file($path)) {
+            throw new \RuntimeException("Snapshot manifest not found: {$path}");
+        }
+
+        $data = json_decode(file_get_contents($path), true);
+
+        if (!$data) {
+            throw new \RuntimeException("Invalid snapshot manifest JSON");
+        }
+
+        return $data;
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validate PHP + SDK compatibility
+    |--------------------------------------------------------------------------
+    */
+   protected function validateRuntime(array $manifest): void
+{
+    /*
+    |--------------------------------------------------------------------------
+    | PHP Version Validation
+    |--------------------------------------------------------------------------
+    */
+    if (!empty($manifest['php_version'])) {
+
+        if (!Semver::satisfies(PHP_VERSION, $manifest['php_version'])) {
+
+            throw new \RuntimeException(
+                "Snapshot requires PHP {$manifest['php_version']}, current: " . PHP_VERSION
+            );
+        }
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | SDK Version Validation
+    |--------------------------------------------------------------------------
+    */
+    if (!empty($manifest['sdk'])) {
+
+        $required = is_array($manifest['sdk'])
+            ? ($manifest['sdk']['version'] ?? null)
+            : $manifest['sdk'];
+
+        $current = \SchoolPalm\ModuleBridge\Platform\SdkVersion::current();
+
+        if (!$current) {
+            throw new \RuntimeException(
+                "Cannot access SDK current version"
+            );
+        }
+
+        if ($required && !Semver::satisfies($current, $required)) {
+
+            throw new \RuntimeException(
+                "Snapshot requires SDK {$required}, current: {$current}"
+            );
+        }
+    }
+}
+
+    /*
+    |--------------------------------------------------------------------------
+    | Register bindings ONLY (no filesystem discovery, no autoloading)
+    |--------------------------------------------------------------------------
+    */
+    protected function registerBindings(string $basePath , string $namespace): void
+{
+    $basePath = rtrim($basePath, '/\\');
+    $contractsPath = $basePath . '/Backend/Contracts';
+    $servicesPath  = $basePath . '/Backend/Services';
+
+
+    $contracts = [];
+    $services  = [];
+
+    /*
+    |--------------------------------------------------------------------------
+    | Contracts (file-based - deterministic)
+    |--------------------------------------------------------------------------
+    */
+    foreach (File::allFiles($contractsPath) as $file) {
+
+        $class = $this->resolveClass($file->getPathname(),  $namespace);
+
+
+        if (interface_exists($class)) {
+            $contracts[class_basename($class)] = $class;
+        }
+    }
+
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Services (file-based - deterministic)
+    |--------------------------------------------------------------------------
+    */
+    foreach (File::allFiles($servicesPath) as $file) {
+
+        $class = $this->resolveClass($file->getPathname(), $namespace);
+
+        if (class_exists($class)) {
+            $services[class_basename($class)] = $class;
+        }
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Bind
+    |--------------------------------------------------------------------------
+    */
+    foreach ($contracts as $contractBase => $contractClass) {
+
+        $expected = preg_replace('/Contract$/', 'Service', $contractBase);
+
+        if (isset($services[$expected])) {
+            $this->app->bind($contractClass, $services[$expected]);
+        }
+    }
+}
+
+protected function resolveClass(
+    string $filePath,
+    string $namespace
+): string {
+
+    $filePath = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $filePath);
+
+    $dirname = basename(dirname($filePath));
+
+    $class = basename($filePath);
+    $class = preg_replace('/\.php$/', '', $class);
+
+    return rtrim($namespace, '\\')
+        . '\\'
+        . $dirname
+        . '\\'
+        . $class;
+}
+}

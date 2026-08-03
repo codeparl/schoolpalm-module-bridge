@@ -1,0 +1,182 @@
+[
+    {
+        "key": "school-super-admin",
+        "name": "Super Admin",
+        "description": "Full system owner with unrestricted access."
+    },
+    {
+        "key": "school-admin",
+        "name": "Admin",
+        "description": "Manages school operations and system settings."
+    },
+    {
+        "key": "user",
+        "name": "User",
+        "description": "Basic system user with limited access."
+    },
+    {
+        "key": "parent",
+        "name": "Parent",
+        "description": "Views student progress and communicates with school."
+    },
+    {
+        "key": "student",
+        "name": "Student",
+        "description": "Learner enrolled in the institution."
+    },
+    {
+        "key": "teacher",
+        "name": "Teacher",
+        "description": "Handles teaching and student academic activities."
+    },
+    {
+        "key": "staff",
+        "name": "Staff",
+        "description": "General school staff member."
+    },
+    {
+        "key": "class_teacher",
+        "name": "Class Teacher",
+        "description": "Manages class attendance and reporting."
+    },
+    {
+        "key": "nursery_teacher",
+        "name": "Nursery Teacher",
+        "description": "Handles early childhood education."
+    },
+    {
+        "key": "head_of_section",
+        "name": "Head of Section",
+        "description": "Oversees a section such as Nursery or Primary."
+    },
+    {
+        "key": "games_teacher",
+        "name": "Games Teacher",
+        "description": "Manages sports and co-curricular activities."
+    },
+    {
+        "key": "head_teacher",
+        "name": "Head Teacher",
+        "description": "Oversees academic and administrative functions."
+    },
+    {
+        "key": "dos",
+        "name": "Director of Studies",
+        "description": "Manages curriculum and academic programs."
+    },
+    {
+        "key": "bursar",
+        "name": "Bursar",
+        "description": "Handles financial operations of the school."
+    },
+    {
+        "key": "exam_officer",
+        "name": "Examination Officer",
+        "description": "Coordinates examinations and assessments."
+    },
+    {
+        "key": "prefect",
+        "name": "Student Prefect",
+        "description": "Student leader assisting in discipline and coordination."
+    },
+    {
+        "key": "counselor",
+        "name": "Guidance Counselor",
+        "description": "Provides student guidance and counseling services."
+    },
+    {
+        "key": "warden",
+        "name": "Warden",
+        "description": "Manages boarding facilities."
+    },
+    {
+        "key": "matron",
+        "name": "Matron",
+        "description": "Oversees student welfare in boarding section."
+    },
+    {
+        "key": "nurse",
+        "name": "School Nurse",
+        "description": "Provides healthcare services to students."
+    },
+    {
+        "key": "principal",
+        "name": "Principal",
+        "description": "Top-level administrator in tertiary institutions."
+    },
+    {
+        "key": "dean",
+        "name": "Dean",
+        "description": "Manages faculty or academic divisions."
+    },
+    {
+        "key": "lecturer",
+        "name": "Lecturer",
+        "description": "Teaches at tertiary level."
+    },
+    {
+        "key": "hod",
+        "name": "Head of Department",
+        "description": "Supervises a department."
+    },
+    {
+        "key": "registrar",
+        "name": "Registrar",
+        "description": "Manages academic records and admissions."
+    },
+    {
+        "key": "research_coordinator",
+        "name": "Research Coordinator",
+        "description": "Oversees research programs."
+    },
+    {
+        "key": "internship_officer",
+        "name": "Internship Officer",
+        "description": "Coordinates internships and attachments."
+    },
+    {
+        "key": "clerical",
+        "name": "Clerical Staff",
+        "description": "Handles administrative and paperwork tasks."
+    },
+    {
+        "key": "librarian",
+        "name": "Librarian",
+        "description": "Manages library resources and services."
+    },
+    {
+        "key": "canteen_staff",
+        "name": "Canteen Staff",
+        "description": "Handles cafeteria operations."
+    },
+    {
+        "key": "security",
+        "name": "Security Staff",
+        "description": "Ensures safety and security of the school."
+    },
+    {
+        "key": "website_admin",
+        "name": "Website Administrator",
+        "description": "Manages the school website."
+    },
+    {
+        "key": "website_editor",
+        "name": "Website Editor",
+        "description": "Edits and publishes website content."
+    },
+    {
+        "key": "website_author",
+        "name": "Website Author",
+        "description": "Creates content for the website."
+    },
+    {
+        "key": "website_moderator",
+        "name": "Website Moderator",
+        "description": "Moderates website interactions."
+    },
+    {
+        "key": "website_viewer",
+        "name": "Website Viewer",
+        "description": "Views website analytics and reports."
+    }
+]

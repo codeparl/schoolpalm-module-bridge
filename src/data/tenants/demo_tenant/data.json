@@ -1,0 +1,54 @@
+{
+  "id": "tenant_demo_001",
+  "tenant_name": "Demo Secondary School",
+  "subdomain_name": "demo-school",
+  "owner_id": 1,
+  "tenant_code": "DSS-001",
+  "plan_id": 1,
+
+  "currency": "UGX",
+
+  "subscription_started_at": "2026-01-01T00:00:00Z",
+  "subscription_expires_at": "2027-01-01T00:00:00Z",
+  "subscription_period": "annual",
+  "subscription_price": 500000,
+  "subscription_status": "active",
+
+  "branding": {
+    "logo": "tenants/tenant_demo_001/logo.png",
+    "favicon": "tenants/tenant_demo_001/favicon.ico"
+  },
+
+  "modules": [
+    "student",
+    "fees",
+    "attendance",
+    "exams"
+  ],
+
+  "plan_modules": [
+    "student",
+    "fees"
+  ],
+
+  "active_modules": [
+    "student",
+    "fees",
+    "attendance"
+  ],
+
+  "users": {
+    "owner": {
+      "id": 1,
+      "name": "System Admin",
+      "email": "admin@demo.test"
+    }
+  },
+
+  "settings": {
+    "academic_year": "2026",
+    "timezone": "Africa/Kampala",
+    "language": "en",
+    "date_format": "Y-m-d"
+  }
+}

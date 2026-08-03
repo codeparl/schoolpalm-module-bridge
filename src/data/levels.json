@@ -1,0 +1,74 @@
+{
+    "1": {
+        "label": "Early Childhood Education",
+        "code": "ECE"
+    },
+    "2": {
+        "label": "Primary Education",
+        "code": "PRI"
+    },
+    "3": {
+        "label": "Lower Secondary Education",
+        "code": "LSE"
+    },
+    "4": {
+        "label": "Upper Secondary Education",
+        "code": "USE"
+    },
+    "5": {
+        "label": "Secondary Education",
+        "code": "SEC"
+    },
+    "6": {
+        "label": "Vocational Education",
+        "code": "VOC"
+    },
+    "7": {
+        "label": "Technical Education",
+        "code": "TEC"
+    },
+    "8": {
+        "label": "Tertiary Education",
+        "code": "TER"
+    },
+    "9": {
+        "label": "College Education",
+        "code": "COL"
+    },
+    "10": {
+        "label": "University Education",
+        "code": "UNI"
+    },
+    "11": {
+        "label": "Undergraduate Education",
+        "code": "UG"
+    },
+    "12": {
+        "label": "Postgraduate Education",
+        "code": "PG"
+    },
+    "13": {
+        "label": "Professional Education",
+        "code": "PRO"
+    },
+    "14": {
+        "label": "Medical & Health Sciences Education",
+        "code": "MED"
+    },
+    "15": {
+        "label": "Teacher Education",
+        "code": "TED"
+    },
+    "16": {
+        "label": "Adult & Continuing Education",
+        "code": "ACE"
+    },
+    "17": {
+        "label": "Special Needs Education",
+        "code": "SNE"
+    },
+    "18": {
+        "label": "Research-Based Education",
+        "code": "RES"
+    }
+}

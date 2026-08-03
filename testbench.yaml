@@ -1,0 +1,49 @@
+laravel: '@testbench'
+
+providers:
+  - SchoolPalm\ModuleBridge\Providers\ModuleBridgeServiceProvider
+  - Workbench\App\Providers\WorkbenchServiceProvider
+
+env:
+  APP_ENV: testing
+  CACHE_DRIVER: array
+  FILESYSTEM_DISK: local
+
+config:
+  cache.default: array
+
+  filesystems.default: local
+
+  module-bridge:
+    registry_path: storage_path('app/modules.json')
+    cache_key: schoolpalm.modules
+    cache_ttl: 60
+
+migrations:
+  - workbench/database/migrations
+
+seeders:
+  - Workbench\Database\Seeders\DatabaseSeeder
+
+workbench:
+  start: '/'
+  install: true
+  health: false
+  discovers:
+    web: true
+    api: true
+    commands: true
+    components: false
+    factories: true
+    views: false
+  build:
+    - asset-publish
+    - create-sqlite-db
+    - db-wipe
+    - migrate-fresh
+  assets:
+    - laravel-assets
+  sync:
+    - from: storage
+      to: workbench/storage
+      reverse: true
