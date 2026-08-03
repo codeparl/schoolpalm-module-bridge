@@ -8,7 +8,9 @@ use Orchestra\Testbench\TestCase as Orchestra;
 use SchoolPalm\AppLogger\AppLoggerServiceProvider;
 use SchoolPalm\AppSettings\Providers\AppSettingsServiceProvider;
 use SchoolPalm\CacheStore\Providers\CacheStoreServiceProvider;
+use SchoolPalm\MessageDelivery\MessageDeliveryServiceProvider;
 use SchoolPalm\ModuleBridge\Providers\ModuleBridgeServiceProvider;
+use SchoolPalm\QueuedJobs\Providers\QueuedJobsServiceProvider;
 use UnnovateBrains\DocumentBuilder\DocumentBuilderServiceProvider;
 
 class TestCase extends Orchestra
@@ -27,6 +29,8 @@ class TestCase extends Orchestra
             // Register ModuleBridge BEFORE CacheStore so CacheContextResolver is bound
             ModuleBridgeServiceProvider::class,
             CacheStoreServiceProvider::class,
+            MessageDeliveryServiceProvider::class,
+            QueuedJobsServiceProvider::class,
         ];
     }
 
@@ -159,6 +163,76 @@ class TestCase extends Orchestra
                 'table' => 'cache_store',
             ]
         );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Message Delivery Configuration
+        |--------------------------------------------------------------------------
+        */
+        $app['config']->set('message-delivery.default_channel', 'email');
+
+        $app['config']->set('message-delivery.notification', [
+            'default_language' => 'en',
+            'default_priority' => 'normal',
+        ]);
+
+        $app['config']->set('message-delivery.delivery_tracking', true);
+
+        $app['config']->set('message-delivery.channels', [
+            'email'    => 'laravel-mail',
+            'sms'      => 'egosms',
+            'whatsapp' => 'twilio-whatsapp',
+            'push'     => 'firebase',
+        ]);
+
+        $app['config']->set('message-delivery.providers', [
+            'laravel-mail' => [
+                'mailer' => 'array',
+            ],
+            'ses' => [
+                'mailer' => 'ses',
+            ],
+            'mailgun' => [
+                'mailer' => 'mailgun',
+            ],
+            'postmark' => [
+                'mailer' => 'postmark',
+            ],
+            'resend' => [
+                'mailer' => 'resend',
+            ],
+            'egosms' => [
+                'api_url'   => 'https://api.egosms.co/v1',
+                'username'  => 'test_user',
+                'password'  => 'secret',
+                'sender_id' => 'SCHOOLPALM',
+            ],
+            'twilio-sms' => [
+                'sid'   => 'AC_test_sid',
+                'token' => 'test_token',
+                'from'  => '+1234567890',
+            ],
+            'twilio-whatsapp' => [
+                'sid'   => 'AC_test_sid',
+                'token' => 'test_token',
+                'from'  => 'whatsapp:+14155238886',
+            ],
+            'firebase' => [
+                'credentials' => __DIR__ . '/../workbench/storage/app/firebase.json',
+            ],
+        ]);
+
+        /*
+        |--------------------------------------------------------------------------
+        | Queued Jobs Configuration
+        |--------------------------------------------------------------------------
+        */
+        $app['config']->set('queued-jobs.connection', 'sync');
+        $app['config']->set('queued-jobs.queue', 'default');
+        $app['config']->set('queued-jobs.capture_context', true);
+        $app['config']->set('queued-jobs.auto_restore_context', true);
+        $app['config']->set('queued-jobs.tries', 3);
+        $app['config']->set('queued-jobs.timeout', 120);
 
         View::addLocation(__DIR__ . '/../workbench/resources/views');
     }

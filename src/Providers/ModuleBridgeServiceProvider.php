@@ -11,13 +11,14 @@ use SchoolPalm\ModuleBridge\Support\LevelManager;
 use Composer\Autoload\ClassLoader;
 use SchoolPalm\AppSettings\Managers\SettingsManager;
 
-// ✅ CORRECTED CONTRACT IMPORT
 use SchoolPalm\CacheStore\Contracts\CacheContextResolver as CacheContextResolverContract;
 use SchoolPalm\CacheStore\Manager\CacheStoreManager;
 use SchoolPalm\ModuleBridge\Adapters\CacheAdapter;
 use SchoolPalm\ModuleBridge\Adapters\Document\SchoolPalmDocumentContextHandler;
 use SchoolPalm\ModuleBridge\Adapters\DocumentHost;
 use SchoolPalm\ModuleBridge\Adapters\LoggerAdapter;
+use SchoolPalm\ModuleBridge\Adapters\MessageDeliveryAdapter;
+use SchoolPalm\ModuleBridge\Adapters\QueuedJobsAdapter;
 use SchoolPalm\ModuleBridge\Adapters\SettingsAdapter;
 use SchoolPalm\ModuleBridge\Adapters\StorageAdapter;
 use SchoolPalm\ModuleBridge\Contracts\Host\ContextHost;
@@ -37,8 +38,34 @@ use SchoolPalm\ModuleBridge\Services\Host\UserHostService;
 use SchoolPalm\ModuleBridge\Snapshot\SnapshotRegistry;
 use UnnovateBrains\DocumentBuilder\Contracts\DocumentStorage;
 use SchoolPalm\ModuleBridge\Services\Host\ModuleHostService;
+use SchoolPalm\QueuedJobs\Managers\QueuedJobsManager;
 use UnnovateBrains\DocumentBuilder\Contracts\ContextHandler;
 use UnnovateBrains\DocumentBuilder\Contracts\DocumentContextResolver;
+use SchoolPalm\MessageDelivery\Notification\Contracts\{
+    EventResolver,
+    RecipientResolver,
+    PreferenceResolver,
+    LanguageResolver,
+    ChannelResolver,
+    PriorityResolver,
+    RetryResolver,
+    ScheduleResolver,
+    TemplateResolver
+};
+use SchoolPalm\MessageDelivery\Notification\Engine\NotificationEngine;
+use SchoolPalm\MessageDelivery\Notification\NotificationManager;
+use SchoolPalm\ModuleBridge\Adapters\NotificationAdapter;
+use SchoolPalm\ModuleBridge\Resolvers\{
+    BridgeEventResolver,
+    BridgeRecipientResolver,
+    BridgePreferenceResolver,
+    BridgeLanguageResolver,
+    BridgeChannelResolver,
+    BridgePriorityResolver,
+    BridgeRetryResolver,
+    BridgeScheduleResolver,
+    BridgeTemplateResolver
+};
 
 class ModuleBridgeServiceProvider extends ServiceProvider
 {
@@ -164,6 +191,48 @@ class ModuleBridgeServiceProvider extends ServiceProvider
             return new CacheAdapter(
                 $app->make(CacheStoreManager::class),
                 $app->make(ContextResolver::class)
+            );
+        });
+
+
+        $this->app->singleton(
+            'module-bridge.message-delivery',
+            fn($app) => new MessageDeliveryAdapter(
+                contextResolver: $app->make(ContextResolver::class)
+            )
+        );
+
+        $this->app->bind(QueuedJobsAdapter::class, function ($app) {
+            return new QueuedJobsAdapter(
+                $app->make(ContextResolver::class),
+                $app->make(QueuedJobsManager::class)
+            );
+        });
+
+        $this->app->bind(EventResolver::class, BridgeEventResolver::class);
+        $this->app->bind(RecipientResolver::class, BridgeRecipientResolver::class);
+        $this->app->bind(PreferenceResolver::class, BridgePreferenceResolver::class);
+        $this->app->bind(LanguageResolver::class, BridgeLanguageResolver::class);
+        $this->app->bind(ChannelResolver::class, BridgeChannelResolver::class);
+        $this->app->bind(PriorityResolver::class, BridgePriorityResolver::class);
+        $this->app->bind(RetryResolver::class, BridgeRetryResolver::class);
+        $this->app->bind(ScheduleResolver::class, BridgeScheduleResolver::class);
+        $this->app->bind(TemplateResolver::class, BridgeTemplateResolver::class);
+
+
+        // 3. Bind the NotificationManager
+        $this->app->singleton(NotificationManager::class, function ($app) {
+            return new NotificationManager(
+                $app->make(NotificationEngine::class)
+            );
+        });
+
+        // 4. Bind the NotificationAdapter used by the Facade
+        $this->app->singleton(NotificationAdapter::class, function ($app) {
+            return new NotificationAdapter(
+                $app->make(ContextResolver::class),
+                $app->make(NotificationManager::class),
+                $app
             );
         });
     }

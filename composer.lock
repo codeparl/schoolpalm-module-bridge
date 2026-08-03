@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "6b34fbbb0a4ff53d42d999d55ea476e1",
+    "content-hash": "ebb8e9a868da4aa2d0f152d41565b96d",
     "packages": [
         {
             "name": "bacon/bacon-qr-code",
@@ -4918,6 +4918,159 @@
                 "source": "https://github.com/codeparl/document-builder/tree/v1.0.0"
             },
             "time": "2026-08-01T20:51:20+00:00"
+        },
+        {
+            "name": "schoolpalm/message-delivery",
+            "version": "1.0.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/codeparl/message-delivery.git",
+                "reference": "d4ef4c9834f92d08c48237a19fb3745b6101d368"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/codeparl/message-delivery/zipball/d4ef4c9834f92d08c48237a19fb3745b6101d368",
+                "reference": "d4ef4c9834f92d08c48237a19fb3745b6101d368",
+                "shasum": ""
+            },
+            "require": {
+                "illuminate/mail": "^12.0",
+                "illuminate/queue": "^12.0",
+                "illuminate/support": "^12.0",
+                "php": "^8.2",
+                "schoolpalm/app-logger": "^1.0",
+                "schoolpalm/queued-jobs": "^1.0"
+            },
+            "require-dev": {
+                "laravel/pint": "^1.13",
+                "mockery/mockery": "^1.6",
+                "orchestra/testbench": "^9.0|^10.0",
+                "pestphp/pest": "^3.8",
+                "pestphp/pest-plugin-laravel": "^3.2",
+                "phpunit/phpunit": "^11.0"
+            },
+            "suggest": {
+                "schoolpalm/cache-store": "Recommended when providers need context-aware caching during execution."
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "aliases": {
+                        "Notification": "SchoolPalm\\MessageDelivery\\Facades\\Notification",
+                        "MessageDelivery": "SchoolPalm\\MessageDelivery\\Facades\\MessageDelivery"
+                    },
+                    "providers": [
+                        "SchoolPalm\\MessageDelivery\\MessageDeliveryServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "SchoolPalm\\MessageDelivery\\": "src/"
+                },
+                "exclude-from-classmap": [
+                    "src/Database/migrations/"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Mugabo Hassan",
+                    "email": "cybarox@gmail.com",
+                    "homepage": "https://schoolpalm.com",
+                    "role": "Developer"
+                }
+            ],
+            "description": "A message delivery package supporting email, sms, push and whatsapp providers for Laravel packages.",
+            "keywords": [
+                "delivery",
+                "email",
+                "laravel",
+                "message",
+                "messaging",
+                "providers",
+                "push",
+                "schoolpalm",
+                "sms",
+                "whatsapp"
+            ],
+            "support": {
+                "email": "support@schoolpalm.com",
+                "issues": "https://github.com/schoolpalm/message-delivery/issues",
+                "source": "https://github.com/schoolpalm/message-delivery"
+            },
+            "funding": [
+                {
+                    "url": "https://schoolpalm.com",
+                    "type": "other"
+                }
+            ],
+            "time": "2026-08-03T09:45:22+00:00"
+        },
+        {
+            "name": "schoolpalm/queued-jobs",
+            "version": "1.1.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/codeparl/queued-jobs.git",
+                "reference": "48f16398f5d7bb5c2caf8602865cf4e033466ae6"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/codeparl/queued-jobs/zipball/48f16398f5d7bb5c2caf8602865cf4e033466ae6",
+                "reference": "48f16398f5d7bb5c2caf8602865cf4e033466ae6",
+                "shasum": ""
+            },
+            "require": {
+                "illuminate/cache": "^12.0|^11.0",
+                "illuminate/contracts": "^12.0|^11.0",
+                "illuminate/queue": "^12.0",
+                "illuminate/support": "^12.0",
+                "php": "^8.1"
+            },
+            "require-dev": {
+                "laravel/pint": "^1.13",
+                "mockery/mockery": "^1.6",
+                "orchestra/testbench": "^9.0|^10.0",
+                "pestphp/pest": "^3.8",
+                "pestphp/pest-plugin-laravel": "^3.2",
+                "phpunit/phpunit": "^11.0"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "aliases": {
+                        "QueuedJobs": "SchoolPalm\\QueuedJobs\\Facades\\QueuedJobs"
+                    },
+                    "providers": [
+                        "SchoolPalm\\QueuedJobs\\Providers\\QueuedJobsServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "SchoolPalm\\QueuedJobs\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "SchoolPalm",
+                    "email": "dev@schoolpalm.com"
+                }
+            ],
+            "description": "A Laravel queue infrastructure package that preserves application execution context when dispatching queued jobs.",
+            "support": {
+                "issues": "https://github.com/codeparl/queued-jobs/issues",
+                "source": "https://github.com/codeparl/queued-jobs/tree/v1.1.0"
+            },
+            "time": "2026-07-29T08:38:41+00:00"
         },
         {
             "name": "setasign/fpdf",

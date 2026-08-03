@@ -59,6 +59,10 @@ final class ContextResolver implements DocumentContextResolver, CacheContextReso
         ];
     }
 
+    public function currentModule(): ?string
+    {
+        return $this->contextHost->module()?->name;
+    }
     public function identifiers(): array
     {
         $context = $this->resolvePayload();

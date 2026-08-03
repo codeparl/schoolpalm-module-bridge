@@ -23,7 +23,9 @@
         "schoolpalm/document-builder": "^1.0",
         "schoolpalm/app-logger": "^1.0",
         "schoolpalm/app-settings": "^1.0",
-        "schoolpalm/cache-store": "^1.0"
+        "schoolpalm/cache-store": "^1.0",
+        "schoolpalm/message-delivery": "^1.0",
+        "schoolpalm/queued-jobs": "^1.1"
     },
     "autoload": {
         "psr-4": {
