@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace SchoolPalm\ModuleBridge\Services\Host;
 
 use SchoolPalm\ModuleBridge\Contracts\Host\TenantHost;
+use SchoolPalm\ModuleBridge\Support\ContextData;
 use SchoolPalm\ModuleBridge\Support\Helper;
-use App\Models\Tenant;
 
 /**
  * TenantHostService
@@ -18,34 +18,45 @@ use App\Models\Tenant;
 class TenantHostService implements TenantHost
 {
     /**
-     * Cached SDK data
+     * Cached SDK data array
      */
     protected ?array $sdkTenant = null;
 
     /**
-     * Get current tenant object
-     * @return object|null|array
+     * Get current tenant data.
+     * Pass $asArray = true for queue job payloads and Blade view parameters.
      */
-    public function current(): ?object
+    public function current(bool $asArray = false): null|array|ContextData
     {
-        if (Helper::isSdkRuntime()) {
-            return (object) $this->sdkTenant();
+        $data = Helper::isSdkRuntime()
+            ? $this->sdkTenantArray()
+            : $this->realTenantArray();
+
+        if ($data === null) {
+            return null;
         }
 
-        return $this->realTenant();
+        return $asArray ? $data : ContextData::make($data);
     }
 
-      /**
-     * Get current tenant object
-     * @return object|null|array
+    /**
+     * Get current school context.
      */
-    public function currentSchool(): ?object
+    public function currentSchool(bool $asArray = false): null|array|ContextData
     {
         if (Helper::isSdkRuntime()) {
-            return $this->sdkTenant();
+            $data = $this->sdkTenantArray();
+            return $asArray ? $data : ContextData::make($data);
         }
 
-        return currentSchool();
+        $school = currentSchool();
+        if (!$school) {
+            return null;
+        }
+
+        $data = is_array($school) ? $school : (array) $school;
+
+        return $asArray ? $data : ContextData::make($data);
     }
 
     /**
@@ -54,61 +65,76 @@ class TenantHostService implements TenantHost
     public function tenantId(): ?string
     {
         if (Helper::isSdkRuntime()) {
-            return  $this->sdkTenant()['id'] ?? 1;
+            return (string) ($this->sdkTenantArray()['id'] ?? 'sdk_demo_tenant');
         }
 
-        return  tenant()?->id ?? null;
+        return tenant()?->id !== null ? (string) tenant()->id : null;
     }
 
     /**
      * Get current school ID
-     *
-     * In SchoolPalm: resolved from tenant context or active school
-     * In SDK: fake value from JSON
      */
-    public function schoolId(): ?int
+    public function schoolId(): null|int|string
     {
         if (Helper::isSdkRuntime()) {
-            return $this->sdkTenant()['school_id'] ?? 1;
+            return $this->sdkTenantArray()['school_id'] ?? 'sdk_demo_school';
         }
 
-        return currentSchool()->id;
+        return currentSchool()?->id ?? null;
     }
 
     /**
-     * Real tenant (SchoolPalm runtime)
+     * Get school code
      */
-    protected function realTenant(): ?object
+    public function schoolCode(): null|int|string
+    {
+        if (Helper::isSdkRuntime()) {
+            return $this->sdkTenantArray()['school_code'] ?? 'sdk_demo_school_001';
+        }
+
+        return currentSchool()?->school_code ?? null;
+    }
+
+    /**
+     * Real tenant array representation
+     */
+    protected function realTenantArray(): ?array
     {
         $tenant = tenant();
 
-        return $tenant ? (object) [
-            'id' => $tenant->id,
-            'tenant_name' => $tenant->tenant_name,
+        if (!$tenant) {
+            return null;
+        }
+
+        return [
+            'id'          => $tenant->id,
+            'tenant_name' => $tenant->tenant_name ?? null,
             'tenant_code' => $tenant->tenant_code ?? null,
-            'plan_id' => $tenant->plan_id ?? null,
-        ] : null;
+            'plan_id'     => $tenant->plan_id ?? null,
+        ];
     }
 
     /**
-     * SDK tenant (fake data source)
+     * SDK tenant array representation
      */
-    protected function sdkTenant(): array|object
+    protected function sdkTenantArray(): array
     {
         if ($this->sdkTenant !== null) {
             return $this->sdkTenant;
         }
 
-        $path = Helper::dataFolder('tenants/demo_tenant/data.json');
+        $path = Helper::dataFolder('/tenants/demo_tenant/data.json');
 
         if (!file_exists($path)) {
             return $this->sdkTenant = [
-                'id' => 1,
+                'id'          => 'sdk_demo_tenant',
+                'tenant_id'   => 'sdk_demo_tenant',
                 'tenant_name' => 'SDK Demo Tenant',
-                'school_id' => 1,
+                'school_id'   => 'sdk_demo_school',
+                'school_code' => 'sdk_demo_school_001',
             ];
         }
 
-        return $this->sdkTenant = Helper::loadJson($path);
+        return $this->sdkTenant = Helper::loadJson($path) ?? [];
     }
 }

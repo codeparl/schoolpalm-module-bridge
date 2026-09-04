@@ -4,37 +4,41 @@ declare(strict_types=1);
 
 namespace SchoolPalm\ModuleBridge\Contracts\Host;
 
+use SchoolPalm\ModuleBridge\Support\ContextData;
+
 /**
- * Interface UserHost
+ * Interface ModuleHost
  *
- * Provides the currently authenticated user context
- * to modules in a framework-agnostic way.
+ * Provides the current module context to modules in a framework-agnostic way.
  *
- * In SchoolPalm runtime, this maps to the authenticated user
- * within the active school context.
- *
- * In SDK runtime, this is resolved from fake JSON data.
+ * In SchoolPalm runtime, this resolves from active route/request segments.
+ * In SDK runtime, this resolves from test mocks or module metadata.
  */
 interface ModuleHost
 {
     /**
-     * Get the current user as a generic object.
-     *
-     * @return object|null Current authenticated user or null if not available.
+     * Get the name of the current module context.
      */
     public function name(): ?string;
 
     /**
-     * Get the module namespace for the current user.
-     *
-     * @return int|null User identifier or null if no active user.
+     * Get the dot-notation key / slug of the current module context.
+     */
+    public function moduleKey(): ?string;
+
+    /**
+     * Get the root namespace of the current module context.
      */
     public function moduleNamespace(): ?string;
 
     /**
-     * Get the current user as a generic object.
-     *
-     * @return object|null Current authenticated user or null if not available.
+     * Resolve and return current module context array.
      */
-    public function current(): ?object;
+    public function currentArray(): ?array;
+
+    /**
+     * Resolve and return current module context.
+     * Pass $asArray = true for background queues and view context data.
+     */
+    public function current(bool $asArray = false): null|array|ContextData;
 }

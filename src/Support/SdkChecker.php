@@ -14,7 +14,7 @@ final class SdkChecker
 
     public static function getVersion(string $name): ?string
     {
-        return '1.4.0';
+        return '4.0.0';
         //InstalledVersions::getVersion($name);
     }
 }

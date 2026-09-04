@@ -6,6 +6,7 @@ namespace SchoolPalm\ModuleBridge\Facades\Host;
 
 use Illuminate\Support\Facades\Facade;
 use SchoolPalm\ModuleBridge\Adapters\SettingsAdapter;
+use SchoolPalm\ModuleBridge\Support\MessageDeliverySeeder;
 
 /**
  * Settings Adapter with Automated Context Scope Resolution
@@ -23,7 +24,7 @@ use SchoolPalm\ModuleBridge\Adapters\SettingsAdapter;
  * @method static SettingsAdapter forTenant(?string $tenantId = null)
  * @method static SettingsAdapter forSchool(?string $schoolId = null)
  * @method static SettingsAdapter forUser(?string $userId = null)
- *
+ * @method static mixed settings(?string $path = null, mixed $default = null): mixed
  * @mixin SettingsAdapter
  */
 class SettingsHost extends Facade

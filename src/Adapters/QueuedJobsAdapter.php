@@ -7,12 +7,17 @@ namespace SchoolPalm\ModuleBridge\Adapters;
 use SchoolPalm\MessageDelivery\Context\MessageContext;
 use SchoolPalm\ModuleBridge\Services\ContextResolver;
 use SchoolPalm\QueuedJobs\Builders\JobBuilder;
-use SchoolPalm\QueuedJobs\Managers\QueuedJobsManager;
+use SchoolPalm\QueuedJobs\Builders\JobResultBuilder;
 use SchoolPalm\QueuedJobs\Context\QueueContext;
+use SchoolPalm\QueuedJobs\Managers\QueuedJobsManager;
+use SchoolPalm\QueuedJobs\Models\QueueJobResult;
+use SchoolPalm\QueuedJobs\Resources\JobResultResource;
 
 class QueuedJobsAdapter
 {
     protected array $contextData = [];
+
+    protected ?JobBuilder $activeBuilder = null;
 
     public function __construct(
         protected ContextResolver $contextResolver,
@@ -21,15 +26,12 @@ class QueuedJobsAdapter
         $this->initializeContextCallbacks();
     }
 
-    /**
-     * Initialize automatic context resolution and restoration using ContextResolver.
-     */
     protected function initializeContextCallbacks(): void
     {
         $this->queuedJobsManager->resolveContextUsing(function () {
             return array_filter([
                 'tenant_id' => $this->contextResolver->tenantId(),
-                'school_id' => $this->contextResolver->schoolId(),
+                'school_id' => $this->contextResolver->schoolId(true),
                 'user_id'   => $this->contextResolver->userId(),
                 'module'    => $this->contextResolver->currentModule(),
             ], fn($val) => $val !== null && $val !== '');
@@ -40,27 +42,21 @@ class QueuedJobsAdapter
                 $this->contextResolver->initializeTenant($tenantId);
             }
 
-            if ($schoolId = $context->schoolId()) {
+            if ($schoolId = $context->schoolId(true)) {
                 $this->contextResolver->initializeSchool($schoolId);
             }
         });
     }
 
-    /**
-     * Explicitly scope execution to a specific school.
-     */
-    public function forSchool(?string $schoolId = null): static
+    public function forSchool($schoolId = null): static
     {
         $clone = clone $this;
-        $clone->contextData['school_id'] = $schoolId ?? $this->contextResolver->schoolId();
+        $clone->contextData['school_id'] = $schoolId ?? $this->contextResolver->schoolId(true);
         $clone->contextData['tenant_id'] ??= $this->contextResolver->tenantId();
 
         return $clone;
     }
 
-    /**
-     * Explicitly scope execution to a specific tenant.
-     */
     public function forTenant(?string $tenantId = null): static
     {
         $clone = clone $this;
@@ -69,9 +65,6 @@ class QueuedJobsAdapter
         return $clone;
     }
 
-    /**
-     * Set explicit custom context key-value pairs.
-     */
     public function withContext(array|MessageContext $context): static
     {
         $clone = clone $this;
@@ -81,14 +74,11 @@ class QueuedJobsAdapter
         return $clone;
     }
 
-    /**
-     * Merge ambient application context with explicit overrides.
-     */
     public function withAutoScope(): static
     {
         $ambient = array_filter([
             'tenant_id' => $this->contextResolver->tenantId(),
-            'school_id' => $this->contextResolver->schoolId(),
+            'school_id' => $this->contextResolver->schoolId(true),
             'user_id'   => $this->contextResolver->userId(),
             'module'    => $this->contextResolver->currentModule(),
         ], fn($val) => $val !== null && $val !== '');
@@ -100,29 +90,86 @@ class QueuedJobsAdapter
     }
 
     /**
-     * Start building a queued job using the manager, pre-configured with auto-scoped context.
+     * Start building a queued job using JobBuilder with auto-scoped context.
      */
-    public function job(object $job): JobBuilder
+    public function job(object $job): static
     {
-        $scoped = $this->withAutoScope();
+        $clone = clone $this;
+        $scoped = $clone->withAutoScope();
         $cleanContext = array_filter($scoped->contextData, fn($val) => $val !== null && $val !== '');
 
-        return $this->queuedJobsManager->job($job)->withContext($cleanContext);
+        $clone->activeBuilder = $clone->queuedJobsManager->job($job)->withContext($cleanContext);
+
+        return $clone;
     }
 
     /**
-     * Shortcut to build and dispatch a job immediately with the adapter's context.
+     * Start querying persisted job result models/resources.
      */
-    public function dispatch(object $job): mixed
+    public function results(): JobResultBuilder
     {
-        return $this->job($job)->dispatch();
+        return $this->queuedJobsManager->jobs();
     }
 
     /**
-     * Delegate any other unresolved calls directly to the underlying QueuedJobsManager instance.
+     * Get the created job result model for the active job builder.
+     */
+    public function result(): ?QueueJobResult
+    {
+        return $this->activeBuilder?->result();
+    }
+
+    /**
+     * Get the created job result resource for the active job builder.
+     */
+    public function resultResource(): ?JobResultResource
+    {
+        return $this->activeBuilder?->resultResource();
+    }
+
+    /**
+     * Get the created job result array for the active job builder.
+     */
+    public function resultArray(): ?array
+    {
+        return $this->activeBuilder?->resultArray();
+    }
+
+    /**
+     * Dispatch the job.
+     */
+    public function dispatch(?object $job = null): mixed
+    {
+        if ($job !== null) {
+            return $this->job($job)->dispatch();
+        }
+
+        if ($this->activeBuilder) {
+            return $this->activeBuilder->dispatch();
+        }
+
+        throw new \BadMethodCallException('No job active to dispatch.');
+    }
+
+    /**
+     * Proxy builder execution calls (withMetadata, delay, onQueue, etc.) directly to JobBuilder.
      */
     public function __call(string $method, array $parameters): mixed
     {
-        return $this->queuedJobsManager->{$method}(...$parameters);
+        if ($this->activeBuilder && method_exists($this->activeBuilder, $method)) {
+            $result = $this->activeBuilder->{$method}(...$parameters);
+
+            if ($result instanceof JobBuilder) {
+                return $this;
+            }
+
+            return $result;
+        }
+
+        if (method_exists($this->queuedJobsManager, $method)) {
+            return $this->queuedJobsManager->{$method}(...$parameters);
+        }
+
+        throw new \BadMethodCallException("Method [{$method}] does not exist on " . static::class);
     }
 }

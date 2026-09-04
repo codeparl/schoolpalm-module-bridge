@@ -1,7 +1,10 @@
 <?php
+
 declare(strict_types=1);
 
 namespace SchoolPalm\ModuleBridge\Contracts\Host;
+
+use SchoolPalm\ModuleBridge\Support\ContextData;
 
 /**
  * Interface TenantHost
@@ -16,30 +19,29 @@ namespace SchoolPalm\ModuleBridge\Contracts\Host;
 interface TenantHost
 {
     /**
-     * Get the current tenant object if available.
-     *
-     * @return object|null|array Host tenant domain object, if one exists.
+     * Get the current tenant context.
+     * Pass $asArray = true for background queues and view context data.
      */
-    public function current(): ?object;
+    public function current(bool $asArray = false): null|array|ContextData;
+
+    /**
+     * Get the current tenant school context.
+     * Pass $asArray = true for background queues and view context data.
+     */
+    public function currentSchool(bool $asArray = false): null|array|ContextData;
 
     /**
      * Get the tenant ID.
-     *
-     * @return string|null Tenant identifier or null when not in tenant scope.
      */
     public function tenantId(): ?string;
 
     /**
      * Get the current school ID.
-     *
-     * @return int|null School identifier or null when not available.
      */
-    public function schoolId(): ?int;
+    public function schoolId(): int|string|null;
 
     /**
-     * Get the current tenant school object if available.
-     *
-     * @return object|null|array Host tenant domain object, if one exists.
+     * Get the school code.
      */
-    public function currentSchool(): ?object;
+    public function schoolCode(): int|string|null;
 }

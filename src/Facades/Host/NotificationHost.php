@@ -16,7 +16,8 @@ use SchoolPalm\ModuleBridge\Adapters\NotificationAdapter;
  * @method static NotificationAdapter withContext(array|MessageContext $context)
  * @method static NotificationAdapter withAutoScope()
  * @method static NotificationDispatch event(string $event)
- * @method static NotificationResult dispatch(string $event, array $data = [], array $context = [], array $metadata = [], array $channels = [], ?string $language = null, ?string $priority = null, ?string $template = null)
+ * @method static NotificationResult dispatch(string $event, array $data = [], array $context = [], array $metadata = [], array $channels = [], ?string $language = null, ?string $priority = null, ?string $template = null, mixed $recipients = null)
+ * @method static bool notify(string $event, array $data = [], array $context = [], array $metadata = [], array $channels = [], ?string $language = null, ?string $priority = null, ?string $template = null, mixed $recipients = null)
  *
  * @see NotificationAdapter
  */

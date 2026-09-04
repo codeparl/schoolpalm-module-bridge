@@ -6,81 +6,95 @@ namespace SchoolPalm\ModuleBridge\Services;
 
 use SchoolPalm\AppLogger\Context\AppContext;
 use SchoolPalm\CacheStore\Contracts\CacheContextResolver;
+use SchoolPalm\MessageDelivery\Contracts\TenantProviderSettings;
 use SchoolPalm\ModuleBridge\Contracts\Host\ContextHost;
+use SchoolPalm\ModuleBridge\Facades\Host\SettingsHost;
 use UnnovateBrains\DocumentBuilder\Contracts\DocumentContextResolver;
 
-final class ContextResolver implements DocumentContextResolver, CacheContextResolver
+final class ContextResolver implements DocumentContextResolver, CacheContextResolver, TenantProviderSettings
 {
-    private ?string $explicitTenantId = null;
-    private ?string $explicitSchoolId = null;
+    /**
+     * Only used by cloned instances created through forContext().
+     * The application singleton never changes these values.
+     */
+    private ?string $contextTenantId = null;
+    private ?string $contextSchoolId = null;
 
     public function __construct(
         private readonly ContextHost $contextHost
     ) {}
 
-    /*
-    |--------------------------------------------------------------------------
-    | General Module Context Methods
-    |--------------------------------------------------------------------------
-    */
+    /**
+     * Convert full host context to primitive array structure.
+     * Guaranteed to pass array values for view proxies, mailers, and queue payloads.
+     */
+    public function toArray(): array
+    {
+        return [
+            'tenant'           => $this->contextHost->tenant(true),
+            'school'           => $this->contextHost->school(true),
+            'user'             => $this->contextHost->user(true),
+            'module'           => $this->contextHost->module(true),
+            'tenant_id'        => $this->tenantId(),
+            'school_id'        => $this->schoolId(true),
+            'school_code'      => $this->schoolCode(),
+            'user_id'          => $this->userId(),
+            'module_key'       => $this->currentModuleKey(),
+            'module_name'      => $this->currentModule(),
+            'module_namespace' => $this->currentModuleNamespace(),
+            'channel'          => $this->channel(),
+            'locale'           => app()->getLocale(),
+            'timezone'         => config('app.timezone'),
+        ];
+    }
 
     /**
-     * Resolve full runtime context payload.
-     * Renamed to avoid collision with CacheContextResolver::resolve(string $key).
-     *
-     * @return array<string, mixed>
+     * Resolve runtime context payload.
      */
     public function resolvePayload(): array
     {
-        $tenant = $this->contextHost->tenant();
-        $school = $this->contextHost->school();
-        $user   = $this->contextHost->user();
-        $module = $this->contextHost->module();
-
-        return [
-            'tenant'    => $tenant,
-            'tenant_id' => $tenant?->id,
-            'school'    => $school,
-            'school_id' => $school?->school_code,
-            'user'      => $user,
-            'user_id'   => $user?->id,
-            'channel'   => $module?->name,
-            'locale'    => app()->getLocale(),
-            'timezone'  => config('app.timezone'),
-        ];
+        return $this->toArray();
     }
 
     public function settingsScope(): array
     {
         return [
             'tenant_id' => $this->tenantId() ?: null,
-            'school_id' => $this->schoolId() ?: null,
+            'school_id' => $this->schoolId(true) ?: null,
             'user_id'   => $this->userId() ?: null,
         ];
+    }
+
+    public function currentModuleKey(): ?string
+    {
+        return $this->contextHost->module()?->module_key;
+    }
+
+    public function currentModuleNamespace(): ?string
+    {
+        return $this->contextHost->module()?->namespace;
     }
 
     public function currentModule(): ?string
     {
         return $this->contextHost->module()?->name;
     }
+
     public function identifiers(): array
     {
-        $context = $this->resolvePayload();
-
         return [
-            'tenant_id' => $context['tenant_id'],
-            'school_id' => $context['school_id'],
-            'channel'   => $context['channel'],
+            'tenant_id' => $this->tenantId(),
+            'school_id' => $this->schoolId(true),
+            'channel'   => $this->channel(),
         ];
     }
 
     public function channel(): string
     {
-        if (method_exists($this->contextHost, 'module') && $this->contextHost->module() !== null) {
-            return (string) $this->contextHost->module()->name;
-        }
-
-        return (string) config('module-bridge.default_channel', 'module_bridge');
+        return (string) (
+            $this->contextHost->module()?->name
+            ?? config('module-bridge.default_channel', 'module_bridge')
+        );
     }
 
     public function appContext(): AppContext
@@ -90,92 +104,167 @@ final class ContextResolver implements DocumentContextResolver, CacheContextReso
 
     /*
     |--------------------------------------------------------------------------
-    | CacheContextResolver Implementation
+    | TenantProviderSettings
     |--------------------------------------------------------------------------
     */
 
-    public function forContext(?string $tenantId, ?string $schoolId): static
+    public function providerFor(string $channel): ?string
     {
-        $this->explicitTenantId = $tenantId;
-        $this->explicitSchoolId = $schoolId;
 
-        return $this;
+        return SettingsHost::group(
+            "message_delivery.{$channel}"
+        )->get('default_provider');
     }
 
+    public function configurationFor(
+        string $channel,
+        string $provider
+    ): array {
+        $config = SettingsHost::group(
+            "message_delivery.{$channel}.{$provider}"
+        )->get('config', []);
+
+        if (is_array($config)) {
+            return $config;
+        }
+
+        if (is_string($config)) {
+            $decoded = json_decode($config, true);
+
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                return $decoded;
+            }
+        }
+
+        return [];
+    }
+
+    public function enabled(
+        string $channel,
+        string $provider
+    ): bool {
+        return filter_var(
+            SettingsHost::group(
+                "message_delivery.{$channel}.{$provider}"
+            )->get('enabled', false),
+            FILTER_VALIDATE_BOOLEAN
+        );
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | CacheContextResolver
+    |--------------------------------------------------------------------------
+    */
+
     /**
-     * CacheContextResolver Contract: Resolves key to context-prefixed key.
+     * Required by CacheContextResolver contract.
+     *
+     * Does NOT mutate this resolver.
      */
+    public function forContext(
+        ?string $tenantId,
+        ?string $schoolId
+    ): static {
+        $clone = clone $this;
+
+        $clone->contextTenantId = $tenantId;
+        $clone->contextSchoolId = $schoolId;
+
+        return $clone;
+    }
+
     public function resolve(string $key): string
     {
         $tenantId = $this->tenantId();
         $schoolId = $this->schoolId();
-        $prefix = (string) config('cache-store.prefix', 'schoolpalm');
-        $separator = (string) config('cache-store.key_separator', ':');
+
+        $prefix = config(
+            'cache-store.prefix',
+            'schoolpalm'
+        );
+
+        $separator = config(
+            'cache-store.key_separator',
+            ':'
+        );
 
         $parts = [$prefix];
 
-        if ($tenantId !== '' && config('cache-store.context.tenant', true)) {
+        if ($tenantId !== '') {
             $parts[] = 'tenant';
             $parts[] = $tenantId;
         }
 
-        if ($schoolId !== '' && config('cache-store.context.school', true)) {
+        if ($schoolId !== '') {
             $parts[] = 'school';
             $parts[] = $schoolId;
         }
 
         $parts[] = $key;
 
-        return implode($separator, array_filter($parts));
+        return implode(
+            $separator,
+            $parts
+        );
     }
 
     public function hasContext(): bool
     {
-        return $this->tenantId() !== '' || $this->schoolId() !== '';
+        return $this->tenantId() !== ''
+            || $this->schoolId() !== '';
     }
 
     public function tenantId(): string
     {
-        return $this->explicitTenantId ?? (string) $this->contextHost->tenant()?->id;
+
+        if ($this->contextTenantId !== null) {
+            return $this->contextTenantId;
+        }
+
+
+        return (string) $this->contextHost
+            ->tenant()?->id;
     }
 
     public function schoolCode(): string
     {
-        return (string) $this->contextHost->school()?->school_code;
+        return (string) $this->contextHost
+            ->school()?->school_code;
     }
 
     public function schoolId(bool $id = false): string
     {
-        if ($this->explicitSchoolId !== null) {
-            return $this->explicitSchoolId;
+        if ($this->contextSchoolId !== null) {
+            return $this->contextSchoolId;
         }
 
-        if ($id) {
-            return (string) $this->contextHost->school()?->id;
+        $school = $this->contextHost->school();
+
+        if (!$school) {
+            return '';
         }
 
-        return (string) $this->contextHost->school()?->school_code;
+        return $id
+            ? (string) $school->id
+            : (string) $school->school_code;
     }
 
     public function userId(): string
     {
-        return (string) $this->contextHost->user()?->id;
+        return (string) $this->contextHost
+            ->user()?->id;
     }
-
-    /*
-    |--------------------------------------------------------------------------
-    | Context Restoration & Reset
-    |--------------------------------------------------------------------------
-    */
 
     public function initializeTenant(string|int $tenantId): void
     {
-        if (! function_exists('tenancy')) {
+        if (!function_exists('tenancy')) {
             return;
         }
 
-        $tenant = \App\Models\Tenant::findOrFail($tenantId);
-        tenancy()->initialize($tenant);
+        tenancy()->initialize(
+            \App\Models\Tenant::findOrFail($tenantId)
+        );
     }
 
     public function initializeSchool(string|int $schoolId): void
@@ -187,9 +276,6 @@ final class ContextResolver implements DocumentContextResolver, CacheContextReso
 
     public function clear(): void
     {
-        $this->explicitTenantId = null;
-        $this->explicitSchoolId = null;
-
         if (function_exists('tenancy')) {
             tenancy()->end();
         }

@@ -11,7 +11,7 @@ abstract class BaseMigration extends Migration
 {
     /*
     |--------------------------------------------------------------------------
-    | Lifecycle Hooks (Override in Vendor Migration)
+    | Lifecycle Hooks
     |--------------------------------------------------------------------------
     */
 
@@ -37,11 +37,14 @@ abstract class BaseMigration extends Migration
     */
 
     protected string $prefix = '';
-    protected SchemaBuilder  $schema;
+
+    protected SchemaBuilder $schema;
 
     public function __construct()
     {
-        $this->schema = new SchemaBuilder($this->tableName());
+        $this->schema = new SchemaBuilder(
+            $this->tableName()
+        );
     }
 
     public function table(string $name): string
@@ -49,9 +52,7 @@ abstract class BaseMigration extends Migration
         return $this->prefix . $name;
     }
 
-
-abstract public function tableName(): string;
-
+    abstract public function tableName(): string;
 
     /*
     |--------------------------------------------------------------------------
@@ -66,22 +67,59 @@ abstract public function tableName(): string;
 
     /*
     |--------------------------------------------------------------------------
-    | Table Creation Helper
+    | Table Creation
     |--------------------------------------------------------------------------
     */
 
-    protected function createTable(string $name, callable $callback): void
-    {
+    protected function createTable(
+        string $name,
+        callable $callback
+    ): void {
         $table = $this->table($name);
-        if (!Schema::hasTable($table)) {
-            Schema::create($table, function (Blueprint $tableBlueprint) use ($callback) {
-                $tableBlueprint->id();
-                $tableBlueprint->foreignId('school_id')->index();
-                $callback($tableBlueprint);
 
-                $tableBlueprint->timestamps();
-            });
+        if (Schema::hasTable($table)) {
+            return;
         }
+
+        Schema::create(
+            $table,
+            function (Blueprint $blueprint) use ($callback, $table) {
+
+                /*
+                 * Create a SchemaBuilder in CREATE mode.
+                 *
+                 * The builder writes to the active Blueprint instead
+                 * of calling Schema::table(), because the table does
+                 * not exist yet.
+                 */
+                $builder = new SchemaBuilder(
+                    $table,
+                    $blueprint
+                );
+
+                /*
+                 * SchoolPalm standard primary key.
+                 */
+                $blueprint->ulid('id')->primary();
+
+                /*
+                 * Tenant/school ownership.
+                 */
+                $builder
+                    ->foreignId('school_id')
+                    ->index();
+
+                /*
+                 * Developer schema.
+                 */
+                $callback($builder);
+
+                /*
+                 * Standard audit timestamps.
+                 */
+                $blueprint->timestamps();
+            }
+        );
     }
 
     /*
@@ -90,61 +128,93 @@ abstract public function tableName(): string;
     |--------------------------------------------------------------------------
     */
 
-    protected function addColumnIfNotExists(string $column, callable $callback): void
-    {
-        $table = $this->table($this->tableName());
+    protected function addColumnIfNotExists(
+        string $column,
+        callable $callback
+    ): void {
+        $table = $this->table(
+            $this->tableName()
+        );
 
         if (!Schema::hasColumn($table, $column)) {
-
-            Schema::table($table, function (Blueprint $tableBlueprint) use ($callback) {
-                $callback($tableBlueprint);
-            });
+            Schema::table(
+                $table,
+                function (Blueprint $tableBlueprint) use ($callback) {
+                    $callback($tableBlueprint);
+                }
+            );
         }
     }
 
-    protected function dropColumnIfExists( string $column): void
-    {
-         $table = $this->table($this->tableName());
+    protected function dropColumnIfExists(
+        string $column
+    ): void {
+        $table = $this->table(
+            $this->tableName()
+        );
 
         if (Schema::hasColumn($table, $column)) {
-
-            Schema::table($table, function (Blueprint $tableBlueprint) use ($column) {
-                $tableBlueprint->dropColumn($column);
-            });
+            Schema::table(
+                $table,
+                function (Blueprint $tableBlueprint) use ($column) {
+                    $tableBlueprint->dropColumn($column);
+                }
+            );
         }
     }
 
-    protected function addIndexIfNotExists( string $column): void
-    {
-          $table = $this->table($this->tableName());
+    protected function addIndexIfNotExists(
+        string $column
+    ): void {
+        $table = $this->table(
+            $this->tableName()
+        );
 
-        Schema::table($table, function (Blueprint $tableBlueprint) use ($column) {
-            $tableBlueprint->index($column);
-        });
+        Schema::table(
+            $table,
+            function (Blueprint $tableBlueprint) use ($column) {
+                $tableBlueprint->index($column);
+            }
+        );
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Table State Checker
+    | Table State
     |--------------------------------------------------------------------------
     */
 
-    protected function tableExists(string $name): bool
-    {
-        return Schema::hasTable($this->table($name));
+    protected function tableExists(
+        string $name
+    ): bool {
+        return Schema::hasTable(
+            $this->table($name)
+        );
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Migration Record
+    |--------------------------------------------------------------------------
+    */
 
-    private function removeMigrationRecord(string $migrationName): void
-{
-    DB::table('migrations')
-        ->where('migration', $migrationName)
-        ->delete();
-}
+    private function removeMigrationRecord(
+        string $migrationName
+    ): void {
+        DB::table('migrations')
+            ->where('migration', $migrationName)
+            ->delete();
+    }
 
- public function down(string $migrationName): void
-    {
-        Schema::dropIfExists($this->tableName());
-        $this->removeMigrationRecord($migrationName);
+    public function down(
+        string $migrationName
+    ): void {
+        Schema::dropIfExists(
+            $this->tableName()
+        );
+
+        $this->removeMigrationRecord(
+            $migrationName
+        );
     }
 }

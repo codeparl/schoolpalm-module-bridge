@@ -1,14 +1,13 @@
 <?php
 
+use Illuminate\Support\Facades\Queue;
 use SchoolPalm\ModuleBridge\Facades\Host\DocumentHost;
 use SchoolPalm\ModuleBridge\Facades\Host\StorageHost;
+use Symfony\Component\HttpFoundation\Response;
 use UnnovateBrains\DocumentBuilder\Support\DocumentResult;
 
 it('generates a document using resolved school context', function () {
-
-
-    $result =
-        DocumentHost::pdf()
+    $result = DocumentHost::pdf()
         ->fromArray([
             [
                 'name' => 'Student One'
@@ -19,26 +18,15 @@ it('generates a document using resolved school context', function () {
         ->filename('students.pdf')
         ->save();
 
-
-
     expect($result)
         ->not()
         ->toBeNull();
-
-
 
     expect(
         $result->getFilename()
     )
         ->toBe('students.pdf');
 
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Verify tenant isolation
-    |--------------------------------------------------------------------------
-    */
     expect(
         StorageHost::exists(
             'documents/reports/students.pdf'
@@ -47,36 +35,39 @@ it('generates a document using resolved school context', function () {
         ->toBeTrue();
 });
 
+it('downloads a generated document response directly', function () {
+    $response = DocumentHost::pdf()
+        ->fromArray([
+            [
+                'name' => 'Downloadable Student'
+            ]
+        ])
+        ->view('students')
+        ->filename('student-download.pdf')
+        ->download();
+
+    expect($response)
+        ->toBeInstanceOf(Response::class);
+
+    expect($response->headers->get('content-type'))
+        ->toContain('application/pdf');
+
+    expect($response->headers->get('content-disposition'))
+        ->toContain('attachment')
+        ->toContain('student-download.pdf');
+});
+
 it('generates chunked document and merges final output using document host', function () {
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Create many records to force chunking
-    |--------------------------------------------------------------------------
-    */
-
     $students = [];
 
-
     for ($i = 1; $i <= 600; $i++) {
-
         $students[] = [
             'id' => $i,
             'name' => "Student {$i}",
         ];
     }
 
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Execute chunked generation
-    |--------------------------------------------------------------------------
-    */
-
-    $result =
-        DocumentHost::pdf()
+    $result = DocumentHost::pdf()
         ->fromArray($students)
         ->view('students')
         ->chunk(100)
@@ -88,20 +79,10 @@ it('generates chunked document and merges final output using document host', fun
         )
         ->save();
 
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Verify result
-    |--------------------------------------------------------------------------
-    */
-
     expect($result)
         ->toBeInstanceOf(
             DocumentResult::class
         );
-
-
 
     expect(
         $result->getFilename()
@@ -110,20 +91,10 @@ it('generates chunked document and merges final output using document host', fun
             'students-full.pdf'
         );
 
-
-
     expect(
         $result->isComplete()
     )
         ->toBeTrue();
-
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Verify final storage
-    |--------------------------------------------------------------------------
-    */
 
     expect(
         StorageHost::exists(
@@ -131,14 +102,6 @@ it('generates chunked document and merges final output using document host', fun
         )
     )
         ->toBeTrue();
-
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Verify file is not empty
-    |--------------------------------------------------------------------------
-    */
 
     expect(
         StorageHost::get(
@@ -150,10 +113,9 @@ it('generates chunked document and merges final output using document host', fun
 });
 
 it('restores context when document generation runs in queue', function () {
+    Queue::fake();
 
-
-    $result =
-        DocumentHost::pdf()
+    $result = DocumentHost::pdf()
         ->fromArray([
             [
                 'name' => 'Queued Student'
@@ -163,9 +125,30 @@ it('restores context when document generation runs in queue', function () {
         ->queue()
         ->dispatch();
 
+    expect($result)
+        ->not()
+        ->toBeNull();
+});
 
+it('resolves module view prefix automatically using context module_key', function () {
+    $result = DocumentHost::withContext(['module_key' => 'UnnovateBrains\\Common\\Staff'])
+        ->pdf()
+        ->fromArray([
+            ['name' => 'Module Student']
+        ])
+        ->view('students')
+        ->saveTo('documents/reports/module-students.pdf')
+        ->filename('module-students.pdf')
+        ->save();
 
     expect($result)
         ->not()
         ->toBeNull();
+
+    expect(
+        StorageHost::exists(
+            'documents/reports/module-students.pdf'
+        )
+    )
+        ->toBeTrue();
 });

@@ -27,7 +27,7 @@ final class Helper
      | Path / Route Helpers
      |-------------------------------------------------*/
 
-        /**
+    /**
      * Get a specific segment from a path.
      *
      * Supported keys:
@@ -39,71 +39,70 @@ final class Helper
      *
      * @return string|null
      */
-public static function getPathSegment(
-    string $key,
-    ?string $path = null,
-    string $mode = 'full'
-): ?string
-{
-    $path = $path ?: request()->path();
+    public static function getPathSegment(
+        string $key,
+        ?string $path = null,
+        string $mode = 'full'
+    ): ?string {
+        $path = $path ?: request()->path();
 
-    $segments = array_values(array_filter(explode('/', trim($path, '/'))));
+        $segments = array_values(array_filter(explode('/', trim($path, '/'))));
 
-    /**
-     * Detect modules route automatically
-     */
-    $isModuleRoute = str_contains($path, 'modules/');
+        /**
+         * Detect modules route automatically
+         */
+        $isModuleRoute = str_contains($path, 'modules/');
 
-    if ($isModuleRoute) {
-        $mode = 'full';
+        if ($isModuleRoute) {
+            $mode = 'full';
+        }
+
+        /**
+         * Define strict schemas
+         */
+        $schema = match ($mode) {
+            'sdk' => [
+                'portal',
+                'module',
+                'action',
+                'id',
+            ],
+
+            'central' => [
+                'module',
+                'action',
+            ],
+
+            default => [
+                'portal',
+                'context',
+                'module',
+                'action',
+                'id',
+            ],
+        };
+
+        /**
+         * Map strictly by position
+         */
+        $map = [];
+
+        foreach ($schema as $index => $name) {
+            $map[$name] = $segments[$index] ?? null;
+        }
+        //assumes portal/context 
+        if (count($segments) <= 2 && $mode == 'full') return $segments[0];
+        //assumes portal 
+        if (count($segments) < 2 && $mode == 'sdk') return $segments[0];
+        /**
+         * Safe fallback ONLY for missing schema keys
+         */
+        if (!array_key_exists($key, $map)) {
+            return null;
+        }
+
+        return $map[$key];
     }
-
-    /**
-     * Define strict schemas
-     */
-    $schema = match ($mode) {
-        'sdk' => [
-            'portal',
-            'module',
-            'action',
-            'id',
-        ],
-
-        'central' => [
-            'module',
-            'action',
-        ],
-
-        default => [
-            'portal',
-            'context',
-            'module',
-            'action',
-            'id',
-        ],
-    };
-
-    /**
-     * Map strictly by position
-     */
-    $map = [];
-
-    foreach ($schema as $index => $name) {
-        $map[$name] = $segments[$index] ?? null;
-    }
-//assumes portal/context 
-if(count($segments) <= 2 && $mode == 'full') return $segments[0];
- //assumes portal 
-if(count($segments) < 2 && $mode == 'sdk') return $segments[0];
-    /**
-     * Safe fallback ONLY for missing schema keys
-     */
-    if (!array_key_exists($key, $map)) {
-        return null;
-    }
-
-    return $map[$key];
-}
 
 
     /* -------------------------------------------------
@@ -224,15 +223,15 @@ if(count($segments) < 2 && $mode == 'sdk') return $segments[0];
         return self::studly($combined);
     }
 
-public static function namespaceToPath(string $namespace): string
-{
-    return str_replace('\\', '/', trim($namespace, '\\'));
-}
+    public static function namespaceToPath(string $namespace): string
+    {
+        return str_replace('\\', '/', trim($namespace, '\\'));
+    }
 
-public static function modulePath(string $key): string
-{
-    return self::namespaceToPath(self::moduleKeyToNamespace($key));
-}
+    public static function modulePath(string $key): string
+    {
+        return self::namespaceToPath(self::moduleKeyToNamespace($key));
+    }
 
     /**
      * Get academic levels from encrypted config.
@@ -262,31 +261,31 @@ public static function modulePath(string $key): string
 
 
 
-public static function checksum(string $path): string
-{
-    if (!File::exists($path)) {
-        throw new \InvalidArgumentException("checksum: Path not found: {$path}");
+    public static function checksum(string $path): string
+    {
+        if (!File::exists($path)) {
+            throw new \InvalidArgumentException("checksum: Path not found: {$path}");
+        }
+
+        //  Single file
+        if (File::isFile($path)) {
+            return sha1_file($path);
+        }
+
+        //  Directory
+        $files = File::allFiles($path);
+
+        // Ensure consistent order (VERY important)
+        usort($files, fn($a, $b) => strcmp($a->getRealPath(), $b->getRealPath()));
+
+        $hashes = [];
+
+        foreach ($files as $file) {
+            $hashes[] = sha1_file($file->getRealPath());
+        }
+
+        return sha1(implode('', $hashes));
     }
-
-    //  Single file
-    if (File::isFile($path)) {
-        return sha1_file($path);
-    }
-
-    //  Directory
-    $files = File::allFiles($path);
-
-    // Ensure consistent order (VERY important)
-    usort($files, fn($a, $b) => strcmp($a->getRealPath(), $b->getRealPath()));
-
-    $hashes = [];
-
-    foreach ($files as $file) {
-        $hashes[] = sha1_file($file->getRealPath());
-    }
-
-    return sha1(implode('', $hashes));
-}
 
 
     public static function normalizePath(string $path): string
@@ -388,10 +387,10 @@ public static function checksum(string $path): string
     {
         return realpath(__DIR__) . '/../data/module-transit.json';
     }
-    
-    public static function dataFolder(string $path='')
+
+    public static function dataFolder(string $path = '')
     {
-        return realpath(__DIR__) . '/../data/'.$path;
+        return realpath(__DIR__) . '/../data/' . $path;
     }
     public static function schemaPath()
     {
@@ -399,46 +398,45 @@ public static function checksum(string $path): string
     }
 
 
-    
+
     /**
- * Generate a safe archive filename from a dot-notated module key and version.
- *
- * Example:
- *  makeFileName('unnovatebrains.school.student', '1.0.0')
- *  => unnovatebrains-school-student-1.0.0.zip
- *
- * @param string $moduleKey Format: vendor.context.module
- * @param string $version
- * @param string $extension Default: zip
- *
- * @return string
- */
-public static function makeFileNameFromModule(
-    string $moduleKey,
-    string $version,
-    string $extension = 'zip'
-): string {
-return Archive::makeFileName($moduleKey,$version,$extension);
+     * Generate a safe archive filename from a dot-notated module key and version.
+     *
+     * Example:
+     *  makeFileName('unnovatebrains.school.student', '1.0.0')
+     *  => unnovatebrains-school-student-1.0.0.zip
+     *
+     * @param string $moduleKey Format: vendor.context.module
+     * @param string $version
+     * @param string $extension Default: zip
+     *
+     * @return string
+     */
+    public static function makeFileNameFromModule(
+        string $moduleKey,
+        string $version,
+        string $extension = 'zip'
+    ): string {
+        return Archive::makeFileName($moduleKey, $version, $extension);
+    }
 
-}
 
+    static function   moduleKeyToNamespace(string $moduleKey, bool $studly = true): string
+    {
+        // Normalize separators
+        $normalized = str_replace(['/', '-', '\\'], '.', $moduleKey);
 
-static function   moduleKeyToNamespace(string $moduleKey, bool $studly = true): string
-{
-    // Normalize separators
-    $normalized = str_replace(['/', '-', '\\'], '.', $moduleKey);
+        // Split into parts
+        $parts = explode('.', $normalized);
 
-    // Split into parts
-    $parts = explode('.', $normalized);
+        // Convert each segment
+        $parts = array_map(function ($part) use ($studly) {
+            return $studly ? Str::studly($part) : $part;
+        }, $parts);
 
-    // Convert each segment
-    $parts = array_map(function ($part) use ($studly) {
-        return $studly ? Str::studly($part) : $part;
-    }, $parts);
-
-    // Build namespace
-    return implode('\\', $parts).'\\Backend';
-}
+        // Build namespace
+        return implode('\\', $parts) . '\\Backend';
+    }
 
     /**
      * Convert multiple levels into combined folder string
@@ -508,267 +506,269 @@ static function   moduleKeyToNamespace(string $moduleKey, bool $studly = true): 
     }
 
 
-public static function namespaceToKey(string $key){
+    public static function namespaceToKey(string $key)
+    {
 
-if(str_contains( $key,'Backend'))
-    $key  =  self::before($key,'\Backend');
-       $normalized = str_replace(['/', '-', '\\'], '.', strtolower($key));
+        if (str_contains($key, 'Backend'))
+            $key  =  self::before($key, '\Backend');
+        $normalized = str_replace(['/', '-', '\\'], '.', strtolower($key));
         return $normalized;
-
-}
-
-public static function modulePart(
-    string $key,
-    string $part = 'module'
-): ?string {
-
-    if (empty($key)) {
-        return null;
     }
 
-    
+    public static function modulePart(
+        string $key,
+        string $part = 'module'
+    ): ?string {
 
-    $normalized = str_replace(
-        ['\\', '/'],
-        '.',
-        trim($key)
-    );
+        if (empty($key)) {
+            return null;
+        }
 
-    $segments = array_values(
-        array_filter(
-            explode('.', $normalized)
-        )
-    );
 
-    if (empty($segments)) {
-        return null;
-    }
 
-    /*
+        $normalized = str_replace(
+            ['\\', '/'],
+            '.',
+            trim($key)
+        );
+
+        $segments = array_values(
+            array_filter(
+                explode('.', $normalized)
+            )
+        );
+
+        if (empty($segments)) {
+            return null;
+        }
+
+        /*
     |--------------------------------------------------------------------------
     | Remove Backend Suffix
     |--------------------------------------------------------------------------
     */
 
-    $last = end($segments);
+        $last = end($segments);
 
-    if (
-        strtolower($last) === 'backend'
-    ) {
-        array_pop($segments);
-    }
+        if (
+            strtolower($last) === 'backend'
+        ) {
+            array_pop($segments);
+        }
 
-    if (empty($segments)) {
-        return null;
-    }
+        if (empty($segments)) {
+            return null;
+        }
 
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Detect Original Style
     |--------------------------------------------------------------------------
     */
 
-    $isNamespace = str_contains($key, '\\');
+        $isNamespace = str_contains($key, '\\');
 
-    $separator = $isNamespace
-        ? '\\'
-        : '.';
+        $separator = $isNamespace
+            ? '\\'
+            : '.';
 
-    $count = count($segments);
+        $count = count($segments);
 
-    return match ($part) {
+        return match ($part) {
 
-        /*
+            /*
         |--------------------------------------------------------------------------
         | Vendor
         |--------------------------------------------------------------------------
         */
 
-        'vendor' => $segments[0] ?? null,
+            'vendor' => $segments[0] ?? null,
 
-        /*
+            /*
         |--------------------------------------------------------------------------
         | Context
         |--------------------------------------------------------------------------
         */
 
-        'context' => $count >= 2
-            ? $segments[$count - 2]
-            : null,
+            'context' => $count >= 2
+                ? $segments[$count - 2]
+                : null,
 
-        /*
+            /*
         |--------------------------------------------------------------------------
         | Module
         |--------------------------------------------------------------------------
         */
 
-        'module' => $segments[$count - 1] ?? null,
+            'module' => $segments[$count - 1] ?? null,
 
-        /*
+            /*
         |--------------------------------------------------------------------------
         | Context.Module
         |--------------------------------------------------------------------------
         */
 
-        'context.module' => $count >= 2
-            ? implode(
-                $separator,
-                array_slice($segments, -2)
-            )
-            : null,
+            'context.module' => $count >= 2
+                ? implode(
+                    $separator,
+                    array_slice($segments, -2)
+                )
+                : null,
 
-        /*
+            /*
         |--------------------------------------------------------------------------
         | Full
         |--------------------------------------------------------------------------
         */
 
-        'full' => implode(
-            $separator,
-            $segments
-        ),
+            'full' => implode(
+                $separator,
+                $segments
+            ),
 
-        default => null,
-    };
-}
-
-
-public static  function copyFile(string $source, string $destination ){
-
-if(!File::exists($source))
-    throw new \Exception('Source file not found');
-
-File::ensureDirectoryExists(dirname($destination));
-File::copy($source, $destination);
-}
-
-public static function copyDirectory(string $source, string $destination): void
-{
-    if (!File::exists($source)) {
-        throw new \Exception("Source directory not found: {$source}");
+            default => null,
+        };
     }
 
-    $source = rtrim(str_replace('\\', '/', $source), '/');
-    $destination = rtrim(str_replace('\\', '/', $destination), '/');
 
-    File::ensureDirectoryExists($destination);
+    public static  function copyFile(string $source, string $destination)
+    {
 
-    foreach (File::allFiles($source) as $file) {
+        if (!File::exists($source))
+            throw new \Exception('Source file not found');
 
-        $filePath = str_replace('\\', '/', $file->getPathname());
-
-        // correct relative path
-        $relativePath = str_replace($source . '/', '', $filePath);
-
-        $targetPath = $destination . '/' . $relativePath;
-
-        File::ensureDirectoryExists(dirname($targetPath));
-
-        File::copy($file->getPathname(), $targetPath);
-    }
-}
-
-/**
- * Create a new generated relation provider or update an existing one
- * by merging the submitted relation definition by name.
- *
- * @param class-string $providerClass
- * @param array<string,mixed> $submittedRelation
- */
-public static function syncRelationProviders(
-    string $providerClass,
-    array $submittedRelations,
-    string $outputPath
-): void {
-    (new RelationProviderSynchronizer())->createOrUpdateRelations(
-        $providerClass,
-        $submittedRelations,
-        $outputPath
-    );
-}
-
-/**
- * Sync a module relation provider using a provided manifest array.
- *
- * @param array<string,mixed> $manifest
- * @param array<string,mixed> $submittedRelation
- */
-public static function syncManifestRelations(
-    array $manifest,
-    array $submittedRelations,
-    ?string $basePath = null
-): void {
-    $providerClass = (string) ($manifest['relations'] ?? '');
-    $root = (string) ($manifest['root'] ?? '');
-
-    if ($providerClass === '') {
-        throw new \InvalidArgumentException('Manifest relations class is required.');
+        File::ensureDirectoryExists(dirname($destination));
+        File::copy($source, $destination);
     }
 
-    if ($root === '') {
-        throw new \InvalidArgumentException('Manifest root is required.');
-    }
-    $basePath = $basePath ?? base_path();
-    $outputPath = $basePath.'/'. class_basename($providerClass) . '.php';
+    public static function copyDirectory(string $source, string $destination): void
+    {
+        if (!File::exists($source)) {
+            throw new \Exception("Source directory not found: {$source}");
+        }
 
-    self::syncRelationProviders($providerClass, $submittedRelations, $outputPath);
-}
+        $source = rtrim(str_replace('\\', '/', $source), '/');
+        $destination = rtrim(str_replace('\\', '/', $destination), '/');
 
+        File::ensureDirectoryExists($destination);
 
-public static function syncRelationsFromUI(
-    array $manifest,
-    array $submittedRelations,
-    ?string $basePath = null
-): void {
-    $providerClass = (string) ($manifest['relations'] ?? '');
-    $root = (string) ($manifest['root'] ?? '');
+        foreach (File::allFiles($source) as $file) {
 
-    if ($providerClass === '') {
-        throw new \InvalidArgumentException('Manifest relations_provider class is required.');
-    }
+            $filePath = str_replace('\\', '/', $file->getPathname());
 
-    if ($root === '') {
-        throw new \InvalidArgumentException('Manifest root is required.');
-    }
+            // correct relative path
+            $relativePath = str_replace($source . '/', '', $filePath);
 
-    $basePath = $basePath ?? base_path();
+            $targetPath = $destination . '/' . $relativePath;
 
-   $basePath = $basePath ?? base_path();
-    $outputPath = $basePath.'/'. class_basename($providerClass) . '.php';
+            File::ensureDirectoryExists(dirname($targetPath));
 
-
-    app(RelationProviderSynchronizer::class)
-        ->syncFromUi($providerClass, $submittedRelations, $outputPath);
-}
-
- public static  function resolveRelationDefinitions(string $fqcn): array
-{
-    if (!class_exists($fqcn)) {
-        return [];
-    }
-    if (is_callable([$fqcn, 'getDefinitions'])) {
-        return $fqcn::getDefinitions();
+            File::copy($file->getPathname(), $targetPath);
+        }
     }
 
-    return [];
-}
+    /**
+     * Create a new generated relation provider or update an existing one
+     * by merging the submitted relation definition by name.
+     *
+     * @param class-string $providerClass
+     * @param array<string,mixed> $submittedRelation
+     */
+    public static function syncRelationProviders(
+        string $providerClass,
+        array $submittedRelations,
+        string $outputPath
+    ): void {
+        (new RelationProviderSynchronizer())->createOrUpdateRelations(
+            $providerClass,
+            $submittedRelations,
+            $outputPath
+        );
+    }
 
- public static  function resolveRelations(string $fqcn): array
-{
-    if (!class_exists($fqcn)) {
+    /**
+     * Sync a module relation provider using a provided manifest array.
+     *
+     * @param array<string,mixed> $manifest
+     * @param array<string,mixed> $submittedRelation
+     */
+    public static function syncManifestRelations(
+        array $manifest,
+        array $submittedRelations,
+        ?string $basePath = null
+    ): void {
+        $providerClass = (string) ($manifest['relations'] ?? '');
+        $root = (string) ($manifest['root'] ?? '');
+
+        if ($providerClass === '') {
+            throw new \InvalidArgumentException('Manifest relations class is required.');
+        }
+
+        if ($root === '') {
+            throw new \InvalidArgumentException('Manifest root is required.');
+        }
+        $basePath = $basePath ?? base_path();
+        $outputPath = $basePath . '/' . class_basename($providerClass) . '.php';
+
+        self::syncRelationProviders($providerClass, $submittedRelations, $outputPath);
+    }
+
+
+    public static function syncRelationsFromUI(
+        array $manifest,
+        array $submittedRelations,
+        ?string $basePath = null
+    ): void {
+        $providerClass = (string) ($manifest['relations'] ?? '');
+        $root = (string) ($manifest['root'] ?? '');
+
+        if ($providerClass === '') {
+            throw new \InvalidArgumentException('Manifest relations_provider class is required.');
+        }
+
+        if ($root === '') {
+            throw new \InvalidArgumentException('Manifest root is required.');
+        }
+
+        $basePath = $basePath ?? base_path();
+
+        $basePath = $basePath ?? base_path();
+        $outputPath = $basePath . '/' . class_basename($providerClass) . '.php';
+
+
+        app(RelationProviderSynchronizer::class)
+            ->syncFromUi($providerClass, $submittedRelations, $outputPath);
+    }
+
+    public static  function resolveRelationDefinitions(string $fqcn): array
+    {
+        if (!class_exists($fqcn)) {
+            return [];
+        }
+        if (is_callable([$fqcn, 'getDefinitions'])) {
+            return $fqcn::getDefinitions();
+        }
+
         return [];
     }
 
-    $instance = app($fqcn);
+    public static  function resolveRelations(string $fqcn): array
+    {
+        if (!class_exists($fqcn)) {
+            return [];
+        }
 
-    if (method_exists($instance, 'relations')) {
-        return $instance->relations();
+        $instance = app($fqcn);
+
+        if (method_exists($instance, 'relations')) {
+            return $instance->relations();
+        }
+
+        return [];
     }
 
-    return [];
-}
-
-public static function isSdkRuntime(){
-    return config('sdk.runtime','sdk') !== 'schoolpalm';
-}
+    public static function isSdkRuntime()
+    {
+        return config('sdk.runtime', 'sdk') !== 'schoolpalm';
+    }
 }

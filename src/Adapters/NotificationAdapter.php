@@ -5,21 +5,11 @@ declare(strict_types=1);
 namespace SchoolPalm\ModuleBridge\Adapters;
 
 use Illuminate\Contracts\Container\Container;
+use Illuminate\Support\Str;
 use SchoolPalm\MessageDelivery\Context\MessageContext;
-use SchoolPalm\MessageDelivery\Notification\Contracts\{
-    ChannelResolver,
-    EventResolver,
-    LanguageResolver,
-    PreferenceResolver,
-    PriorityResolver,
-    RecipientResolver,
-    RetryResolver,
-    ScheduleResolver,
-    TemplateResolver
-};
-use SchoolPalm\MessageDelivery\Notification\DTO\NotificationDispatch;
 use SchoolPalm\MessageDelivery\Notification\NotificationManager;
 use SchoolPalm\MessageDelivery\Notification\Support\NotificationResult;
+use SchoolPalm\ModuleBridge\Adapters\NotificationDispatchProxy;
 use SchoolPalm\ModuleBridge\Services\ContextResolver;
 
 class NotificationAdapter
@@ -33,19 +23,19 @@ class NotificationAdapter
     ) {}
 
     /**
-     * Explicitly scope execution to a specific school.
+     * Explicitly scope execution to a specific school (Immutable).
      */
     public function forSchool(?string $schoolId = null): static
     {
         $clone = clone $this;
-        $clone->contextData['school_id'] = $schoolId ?? $this->contextResolver->schoolId();
+        $clone->contextData['school_id'] = $schoolId ?? $this->contextResolver->schoolId(true);
         $clone->contextData['tenant_id'] ??= $this->contextResolver->tenantId();
 
         return $clone;
     }
 
     /**
-     * Explicitly scope execution to a specific tenant.
+     * Explicitly scope execution to a specific tenant (Immutable).
      */
     public function forTenant(?string $tenantId = null): static
     {
@@ -56,7 +46,7 @@ class NotificationAdapter
     }
 
     /**
-     * Set explicit custom context key-value pairs.
+     * Set explicit custom context key-value pairs (Immutable).
      */
     public function withContext(array|MessageContext $context): static
     {
@@ -68,15 +58,16 @@ class NotificationAdapter
     }
 
     /**
-     * Merge ambient application context with explicit overrides.
+     * Merge ambient application context with explicit overrides (Immutable).
      */
     public function withAutoScope(): static
     {
         $ambient = array_filter([
-            'tenant_id' => $this->contextResolver->tenantId(),
-            'school_id' => $this->contextResolver->schoolId(),
-            'user_id'   => $this->contextResolver->userId(),
-            'channel'   => $this->contextResolver->currentModule(),
+            'tenant_id'  => $this->contextResolver->tenantId(),
+            'school_id'  => $this->contextResolver->schoolId(true),
+            'user_id'    => $this->contextResolver->userId(),
+            'module'     => $this->contextResolver->currentModule(),
+            'module_key' => $this->contextResolver->currentModuleKey(),
         ], fn($val) => $val !== null && $val !== '');
 
         $clone = clone $this;
@@ -86,14 +77,54 @@ class NotificationAdapter
     }
 
     /**
-     * Start a fluent notification dispatch, pre-configured with auto-scoped context.
+     * Resolve the final cleaned context array after applying auto-scope.
      */
-    public function event(string $event): NotificationDispatch
+    protected function resolvedContext(array $overrides = []): array
     {
         $scoped = $this->withAutoScope();
-        $cleanContext = array_filter($scoped->contextData, fn($val) => $val !== null && $val !== '');
+        $merged = array_merge($scoped->contextData, $overrides);
 
-        return $this->notificationManager->event($event)->context($cleanContext);
+        return array_filter($merged, fn($val) => $val !== null && $val !== '');
+    }
+
+    /**
+     * Start a fluent notification dispatch, pre-configured with auto-scoped context
+     * and view namespace resolution.
+     */
+    public function event(string $event): NotificationDispatchProxy
+    {
+        $scopedContext = $this->resolvedContext();
+
+        $dispatch = $this->notificationManager->event($event)
+            ->context($scopedContext);
+
+        return new NotificationDispatchProxy(
+            dispatch: $dispatch,
+            contextResolver: $this->contextResolver,
+            contextData: $scopedContext
+        );
+    }
+
+    /**
+     * Resolve template/view name with module namespace prefix if '::' is omitted.
+     */
+    public function resolveTemplateKey(?string $template): ?string
+    {
+        if ($template === null || str_contains($template, '::')) {
+            return $template;
+        }
+
+        $moduleKey = $this->contextResolver->currentModuleKey()
+            ?? $this->contextData['module_key']
+            ?? $this->contextData['module']
+            ?? null;
+
+        if ($moduleKey) {
+            $prefix = Str::kebab(str_replace('\\', '.', $moduleKey));
+            return $prefix . '::' . $template;
+        }
+
+        return $template;
     }
 
     /**
@@ -108,28 +139,64 @@ class NotificationAdapter
         ?string $language = null,
         ?string $priority = null,
         ?string $template = null,
+        mixed $recipients = null,
     ): NotificationResult {
-        $scoped = $this->withAutoScope();
-        $mergedContext = array_merge($scoped->contextData, $context);
-        $cleanContext = array_filter($mergedContext, fn($val) => $val !== null && $val !== '');
+        if ($recipients !== null) {
+            $data['recipients'] = $recipients;
+        }
+
+        $resolvedTemplate = $this->resolveTemplateKey($template);
 
         return $this->notificationManager->dispatch(
             event: $event,
             data: $data,
-            context: $cleanContext,
+            context: $this->resolvedContext($context),
+            metadata: $metadata,
+            channels: $channels,
+            language: $language,
+            priority: $priority,
+            template: $resolvedTemplate,
+        );
+    }
+
+    /**
+     * Convenience helper: dispatch a notification and return whether it was dispatched.
+     */
+    public function notify(
+        string $event,
+        array $data = [],
+        array $context = [],
+        array $metadata = [],
+        array $channels = [],
+        ?string $language = null,
+        ?string $priority = null,
+        ?string $template = null,
+        mixed $recipients = null,
+    ): bool {
+        return $this->dispatch(
+            event: $event,
+            data: $data,
+            context: $context,
             metadata: $metadata,
             channels: $channels,
             language: $language,
             priority: $priority,
             template: $template,
-        );
+            recipients: $recipients,
+        )->wasDispatched();
     }
 
     /**
-     * Delegate any other unresolved calls directly to the underlying NotificationManager instance.
+     * Delegate any other unresolved calls directly to the underlying NotificationManager.
      */
     public function __call(string $method, array $parameters): mixed
     {
-        return $this->notificationManager->{$method}(...$parameters);
+        if (method_exists($this->notificationManager, $method)) {
+            return $this->notificationManager->{$method}(...$parameters);
+        }
+
+        throw new \BadMethodCallException(
+            "Method [{$method}] does not exist on " . static::class
+        );
     }
 }

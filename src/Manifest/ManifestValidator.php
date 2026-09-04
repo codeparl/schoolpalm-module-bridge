@@ -7,110 +7,173 @@ use Opis\JsonSchema\Validator;
 use Opis\JsonSchema\Errors\ErrorFormatter;
 use Opis\JsonSchema\Errors\ValidationError;
 use Opis\JsonSchema\ValidationResult;
-use Illuminate\Validation\ValidationException;
 use RuntimeException;
 use SchoolPalm\ModuleBridge\Support\Helper;
 
 class ManifestValidator
 {
-    public static function validate(array $manifest, $command = null): array
-{
-    $schemaPath = Helper::schemaPath();
+    public static function validate(
+        array $manifest,
+        $command = null
+    ): array {
+        $schemaPath = Helper::schemaPath();
 
-    if (!file_exists($schemaPath)) {
-        throw new RuntimeException('Module manifest schema not found at: ' . $schemaPath);
-    }
+        if (!file_exists($schemaPath)) {
+            throw new RuntimeException(
+                'Module manifest schema not found at: ' . $schemaPath
+            );
+        }
 
-    $schemaJson = Helper::loadJson($schemaPath);
+        $schemaJson = Helper::loadJson($schemaPath);
 
-    if (!$schemaJson) {
-        throw new RuntimeException('Invalid schema JSON');
-    }
+        if (!$schemaJson) {
+            throw new RuntimeException(
+                'Invalid schema JSON'
+            );
+        }
 
-    ManifestFactory::normalizeJson($manifest, $schemaJson);
+        /*
+         * Normalize the manifest in-place.
+         */
+        ManifestFactory::normalizeJson(
+            $manifest,
+            $schemaJson
+        );
 
-    $validator = new Validator();
-    $validator->setMaxErrors(100);
+        $validator = new Validator();
 
-    $validator->resolver()->registerFile(
-        'https://schoolpalm.dev/schemas/module-manifest.json',
-        $schemaPath
-    );
+        $validator->setMaxErrors(100);
 
-    // Convert array to object
-    $data = json_decode(json_encode($manifest));
+        $validator->resolver()->registerFile(
+            'https://schoolpalm.dev/schemas/module-manifest.json',
+            $schemaPath
+        );
 
-    /** @var ValidationResult $result */
-    $result = $validator->validate(
-        $data,
-        'https://schoolpalm.dev/schemas/module-manifest.json'
-    );
+        /*
+         * Convert PHP array to JSON object/array structure
+         * expected by Opis.
+         */
+        $data = json_decode(
+            json_encode($manifest)
+        );
 
-    $formatter = new ErrorFormatter();
+        /** @var ValidationResult $result */
+        $result = $validator->validate(
+            $data,
+            'https://schoolpalm.dev/schemas/module-manifest.json'
+        );
 
-    if ($result->isValid()) {
-        return [];
-    }
+        $formatter = new ErrorFormatter();
 
-    /**
-     * Custom formatter with proper "required fields" handling
-     */
-    $custom = function (ValidationError $error) {
+        if ($result->isValid()) {
+            return [];
+        }
 
-        $dataInfo = $error->data();
-        $schemaInfo = $error->schema()->info()->data();
-        $keyword = $error->keyword();
+        /**
+         * Custom formatter.
+         */
+        $custom = function (ValidationError $error) {
 
-        $message = $error->message();
+            $dataInfo = $error->data();
+            $schemaInfo = $error->schema()->info()->data();
+            $keyword = $error->keyword();
 
-        // ----------------------------
-        // FIX: REQUIRED FIELD MISSING
-        // ----------------------------
-        if ($keyword === 'required') {
+            $message = $error->message();
+            $args = $error->args();
 
-            $missing = $error->args()['missing'] ?? null;
+            // -----------------------------------------
+            // REQUIRED
+            // -----------------------------------------
+            if ($keyword === 'required') {
 
-            if (is_array($missing)) {
-                $missing = implode(', ', $missing);
+                $missing = $args['missing'] ?? null;
+
+                if (is_array($missing)) {
+                    $missing = implode(', ', $missing);
+                }
+
+                $message = "Missing required field(s): {$missing}";
             }
 
-            $message = "Missing required field(s): {$missing}";
+            // -----------------------------------------
+            // ADDITIONAL PROPERTIES
+            // -----------------------------------------
+            elseif ($keyword === 'additionalProperties') {
+
+                $properties =
+                    $args['properties']
+                    ?? $args['property']
+                    ?? null;
+
+                if (is_array($properties)) {
+                    $properties = implode(', ', $properties);
+                }
+
+                if ($properties !== null) {
+                    $message = str_replace(
+                        '{properties}',
+                        $properties,
+                        $message
+                    );
+                }
+            }
+
+            // -----------------------------------------
+            // CUSTOM SCHEMA MESSAGE
+            // -----------------------------------------
+            $customMessage = null;
+
+            if (
+                isset($schemaInfo->{'$error'}) &&
+                isset($schemaInfo->{'$error'}->{$keyword})
+            ) {
+                $customMessage =
+                    $schemaInfo->{'$error'}->{$keyword};
+            }
+
+            return [
+                'path' => implode(
+                    '.',
+                    $dataInfo->fullPath()
+                ) ?: '',
+
+                'message' => $customMessage ?: $message,
+
+                'keyword' => $keyword,
+            ];
+        };
+
+        $errors = $formatter->format(
+            $result->error(),
+            true,
+            $custom
+        );
+
+        /*
+         * Console output.
+         */
+        if ($command instanceof Command) {
+            $command->error(
+                '❌ Manifest validation failed.'
+            );
         }
 
-        // ----------------------------
-        // OPTIONAL: schema custom messages
-        // ----------------------------
-        $customMessage = isset($schemaInfo->{'$error'}->{$keyword})
-            ? $schemaInfo->{'$error'}->{$keyword}
-            : null;
+        $errorBug = [];
 
-        return [
-            'path' => implode('.', $dataInfo->fullPath()) ?: '',
-            'message' => $customMessage ?: $message,
-            'keyword' => $keyword,
-        ];
-    };
+        foreach ($errors as $errorGroup) {
 
-    $errors = $formatter->format($result->error(), true, $custom);
+            foreach ($errorGroup as $error) {
 
-    // ----------------------------
-    // OUTPUT HANDLING
-    // ----------------------------
-    if ($command instanceof \Illuminate\Console\Command) {
-        $command->error("❌ Manifest validation failed.");
-    } 
+                $path = $error['path'] ?? '';
 
-    $errorBug = [];
+                $message = $error['message']
+                    ?? 'Unknown error';
 
-    foreach ($errors as $errorGroup) {
-        foreach ($errorGroup as $error) {
-
-            $path = $error['path'] ?? '';
-            $message = $error['message'] ?? 'Unknown error';
-            $errorBug[] = "{$path}: {$message}";
+                $errorBug[] =
+                    "{$path}: {$message}";
+            }
         }
+
+        return $errorBug;
     }
-
-    return $errorBug;
-}
 }

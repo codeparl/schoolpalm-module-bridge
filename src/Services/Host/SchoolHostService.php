@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace SchoolPalm\ModuleBridge\Services\Host;
 
 use SchoolPalm\ModuleBridge\Contracts\Host\SchoolHost;
+use SchoolPalm\ModuleBridge\Support\ContextData;
 use SchoolPalm\ModuleBridge\Support\Helper;
-use App\Models\School;
 
 /**
  * SchoolHostService
@@ -17,41 +17,44 @@ use App\Models\School;
  */
 class SchoolHostService implements SchoolHost
 {
+    /**
+     * Cached SDK data array
+     */
     protected ?array $sdkSchool = null;
 
     /**
-     * Get current school
+     * Get current school context array.
      */
-    public function current(): ?object
+    public function currentArray(): ?array
     {
         if (Helper::isSdkRuntime()) {
-            return (object) $this->sdkSchool();
+            return $this->sdkSchoolArray();
         }
 
-        $school = function_exists('currentSchool')
-            ? currentSchool()
-            : null;
+        return $this->realSchoolArray();
+    }
 
-        return $school ? (object) [
-            'id' => $school->id,
-            'name' => $school->name,
-            'school_code' => $school->school_code ?? null,
-            'academic_level' => $school->academic_level ?? null,
-            'status' => $school->status ?? null,
-            'metadata' => $school->metadata ?? [],
-        ] : null;
+    /**
+     * Get current school context.
+     * Pass $asArray = true for queue job payloads and Blade view parameters.
+     */
+    public function current(bool $asArray = false): null|array|ContextData
+    {
+        $data = $this->currentArray();
+
+        if ($data === null) {
+            return null;
+        }
+
+        return $asArray ? $data : ContextData::make($data);
     }
 
     /**
      * School ID
      */
-    public function id(): ?int
+    public function id(): int|string|null
     {
-        if (Helper::isSdkRuntime()) {
-            return $this->sdkSchool()['id'] ?? 1;
-        }
-
-        return currentSchool()?->id;
+        return $this->currentArray()['id'] ?? null;
     }
 
     /**
@@ -59,11 +62,7 @@ class SchoolHostService implements SchoolHost
      */
     public function name(): ?string
     {
-        if (Helper::isSdkRuntime()) {
-            return $this->sdkSchool()['name'] ?? 'SDK School';
-        }
-
-        return currentSchool()?->name;
+        return $this->currentArray()['name'] ?? null;
     }
 
     /**
@@ -71,23 +70,17 @@ class SchoolHostService implements SchoolHost
      */
     public function code(): ?string
     {
-        if (Helper::isSdkRuntime()) {
-            return $this->sdkSchool()['school_code'] ?? 'SDK-001';
-        }
-
-        return currentSchool()?->school_code;
+        return $this->currentArray()['school_code'] ?? null;
     }
+
+
 
     /**
      * Academic level
      */
     public function academicLevel(): ?string
     {
-        if (Helper::isSdkRuntime()) {
-            return $this->sdkSchool()['academic_level'] ?? 'secondary';
-        }
-
-        return currentSchool()?->academic_level;
+        return $this->currentArray()['academic_level'] ?? null;
     }
 
     /**
@@ -95,11 +88,7 @@ class SchoolHostService implements SchoolHost
      */
     public function status(): ?string
     {
-        if (Helper::isSdkRuntime()) {
-            return $this->sdkSchool()['status'] ?? 'active';
-        }
-
-        return currentSchool()?->status;
+        return $this->currentArray()['status'] ?? null;
     }
 
     /**
@@ -107,35 +96,52 @@ class SchoolHostService implements SchoolHost
      */
     public function metadata(): array
     {
-        if (Helper::isSdkRuntime()) {
-            return $this->sdkSchool()['metadata'] ?? [];
-        }
-
-        return currentSchool()?->metadata ?? [];
+        return $this->currentArray()['metadata'] ?? [];
     }
 
     /**
-     * Load SDK school
+     * Real school array representation
      */
-    protected function sdkSchool(): array
+    protected function realSchoolArray(): ?array
+    {
+        $school = function_exists('currentSchool') ? currentSchool() : null;
+
+        if (!$school) {
+            return null;
+        }
+
+        return [
+            'id'             => $school->id ?? null,
+            'name'           => $school->name ?? null,
+            'school_code'    => $school->school_code ?? null,
+            'academic_level' => $school->academic_level ?? null,
+            'status'         => $school->status ?? null,
+            'metadata'       => $school->metadata ?? [],
+        ];
+    }
+
+    /**
+     * Load SDK school array
+     */
+    protected function sdkSchoolArray(): array
     {
         if ($this->sdkSchool !== null) {
             return $this->sdkSchool;
         }
 
-        $path = Helper::dataFolder('tenants/schools/school_1.json');
+        $path = Helper::dataFolder('tenants/schools/demo_tenant/school_1.json');
 
         if (!file_exists($path)) {
             return $this->sdkSchool = [
-                'id' => 1,
-                'name' => 'SDK Demo School',
-                'school_code' => 'SDK-001',
+                'id'             => 1,
+                'name'           => 'SDK Demo School',
+                'school_code'    => 'SDK-002',
                 'academic_level' => 'secondary',
-                'status' => 'active',
-                'metadata' => [],
+                'status'         => 'active',
+                'metadata'       => [],
             ];
         }
 
-        return $this->sdkSchool = Helper::loadJson($path);
+        return $this->sdkSchool = Helper::loadJson($path) ?? [];
     }
 }

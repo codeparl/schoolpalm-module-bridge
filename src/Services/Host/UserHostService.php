@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace SchoolPalm\ModuleBridge\Services\Host;
 
 use SchoolPalm\ModuleBridge\Contracts\Host\UserHost;
+use SchoolPalm\ModuleBridge\Support\ContextData;
 use SchoolPalm\ModuleBridge\Support\Helper;
-use App\Models\User;
 
 /**
  * UserHostService
@@ -17,39 +17,44 @@ use App\Models\User;
  */
 class UserHostService implements UserHost
 {
+    /**
+     * Cached SDK user array
+     */
     protected ?array $sdkUser = null;
 
     /**
-     * Get current user
+     * Get current user array representation.
      */
-    public function current(): ?object
+    public function currentArray(): ?array
     {
         if (Helper::isSdkRuntime()) {
-            return (object) $this->sdkUser();
+            return $this->sdkUserArray();
         }
 
-        $user = auth()->user();
+        return $this->realUserArray();
+    }
 
-        return $user ? (object) [
-            'id' => $user->id,
-            'name' => $user->name,
-            'email' => $user->email,
-            'login_type' => $user->login_type ?? null,
-            'main_role_id' => $user->main_role_id ?? null,
-            'current_portal' => $user->current_portal ?? null,
-        ] : null;
+    /**
+     * Get current user context.
+     * Pass $asArray = true for queue job payloads and Blade view parameters.
+     */
+    public function current(bool $asArray = false): null|array|ContextData
+    {
+        $data = $this->currentArray();
+
+        if ($data === null) {
+            return null;
+        }
+
+        return $asArray ? $data : ContextData::make($data);
     }
 
     /**
      * Get user ID
      */
-    public function id(): ?int
+    public function id(): int|string|null
     {
-        if (Helper::isSdkRuntime()) {
-            return $this->sdkUser()['id'] ?? 1;
-        }
-
-        return auth()->id();
+        return $this->currentArray()['id'] ?? null;
     }
 
     /**
@@ -57,30 +62,15 @@ class UserHostService implements UserHost
      */
     public function email(): ?string
     {
-        if (Helper::isSdkRuntime()) {
-            return $this->sdkUser()['email'] ?? 'admin@sdk.test';
-        }
-
-        return auth()->user()?->email;
+        return $this->currentArray()['email'] ?? null;
     }
 
     /**
-     * Get roles
+     * Get user roles
      */
     public function roles(): array
     {
-        if (Helper::isSdkRuntime()) {
-            return $this->sdkUser()['roles'] ?? ['admin'];
-        }
-
-        $user = auth()->user();
-
-        if (!$user) {
-            return [];
-        }
-
-        // adapt this to your role system if needed
-        return $user->roles?->pluck('name')->toArray() ?? [];
+        return $this->currentArray()['roles'] ?? [];
     }
 
     /**
@@ -88,17 +78,35 @@ class UserHostService implements UserHost
      */
     public function currentPortal(): ?string
     {
-        if (Helper::isSdkRuntime()) {
-            return $this->sdkUser()['current_portal'] ?? 'admin';
-        }
-
-        return auth()->user()?->current_portal;
+        return $this->currentArray()['current_portal'] ?? null;
     }
 
     /**
-     * Load SDK user
+     * Real user array representation
      */
-    protected function sdkUser(): array
+    protected function realUserArray(): ?array
+    {
+        $user = auth()->user();
+
+        if (!$user) {
+            return null;
+        }
+
+        return [
+            'id'             => $user->id,
+            'name'           => $user->name,
+            'email'          => $user->email,
+            'login_type'     => $user->login_type ?? null,
+            'main_role_id'   => $user->main_role_id ?? null,
+            'roles'          => method_exists($user, 'roles') && $user->roles ? $user->roles->pluck('name')->toArray() : [],
+            'current_portal' => $user->current_portal ?? null,
+        ];
+    }
+
+    /**
+     * Load SDK user array
+     */
+    protected function sdkUserArray(): array
     {
         if ($this->sdkUser !== null) {
             return $this->sdkUser;
@@ -108,14 +116,14 @@ class UserHostService implements UserHost
 
         if (!file_exists($path)) {
             return $this->sdkUser = [
-                'id' => 1,
-                'name' => 'SDK Admin',
-                'email' => 'admin@sdk.test',
-                'roles' => ['admin'],
+                'id'             => 1,
+                'name'           => 'SDK Admin',
+                'email'          => 'admin@sdk.test',
+                'roles'          => ['admin'],
                 'current_portal' => 'admin',
             ];
         }
 
-        return $this->sdkUser = Helper::loadJson($path);
+        return $this->sdkUser = Helper::loadJson($path) ?? [];
     }
 }

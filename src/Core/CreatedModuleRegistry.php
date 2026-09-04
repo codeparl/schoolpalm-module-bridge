@@ -11,6 +11,7 @@ use SchoolPalm\ModuleBridge\Contracts\ModuleRegistryContract;
 use SchoolPalm\ModuleBridge\Support\DevPort;
 use SchoolPalm\ModuleBridge\Support\Helper;
 use SchoolPalm\ModuleBridge\Traits\RegistryTrait;
+use SchoolPalm\ModuleSDK\Support\ModulePaths;
 
 class CreatedModuleRegistry implements ModuleRegistryContract
 {
@@ -22,8 +23,8 @@ class CreatedModuleRegistry implements ModuleRegistryContract
 
     public function __construct(?string $registryPath)
     {
-        $this->registryPath = $registryPath;
-        $this->load();
+        $this->registryPath = ModulePaths::registryFile();
+        $this->load( $this->registryPath );
     }
 
     /* ====================================================
@@ -93,37 +94,37 @@ class CreatedModuleRegistry implements ModuleRegistryContract
         return array_values($this->modules);
     }
 
-  public function get(string $moduleKey): ?array
-{
-    $key = $this->normalizeModuleKey($moduleKey);
+    public function get(string $moduleKey): ?array
+    {
+        $key = $this->normalizeModuleKey($moduleKey);
 
-    return collect($this->modules)->first(function ($m) use ($key) {
+        return collect($this->modules)->first(function ($m) use ($key) {
 
-        if (!isset($m['module_key'])) {
-            return false;
-        }
+            if (!isset($m['module_key'])) {
+                return false;
+            }
 
-        $moduleKey = $this->normalizeModuleKey($m['module_key']);
+            $moduleKey = $this->normalizeModuleKey($m['module_key']);
 
-        // Exact normalized match first
-        if ($moduleKey === $key) {
-            return true;
-        }
+            // Exact normalized match first
+            if ($moduleKey === $key) {
+                return true;
+            }
 
-        // Fallback only
-        return str_contains($moduleKey, $key);
-    });
-}
+            // Fallback only
+            return str_contains($moduleKey, $key);
+        });
+    }
 
-protected function normalizeModuleKey(string $key): string
-{
-    return Str::of($key)
-        ->lower()
-        ->replace(['-', '_', '.'], '')
-        ->toString();
-}
+    protected function normalizeModuleKey(string $key): string
+    {
+        return Str::of($key)
+            ->lower()
+            ->replace(['-', '_', '.'], '')
+            ->toString();
+    }
 
-   
+
 
     public function exists(string $moduleKey): bool
     {
@@ -147,6 +148,7 @@ protected function normalizeModuleKey(string $key): string
 
     public function register(array $module): void
     {
+        
         if ($this->exists($module['module_key'] ?? '')) {
             return;
         }
@@ -158,6 +160,7 @@ protected function normalizeModuleKey(string $key): string
         $this->modules[$normalized['module_key']] = $normalized;
 
         $this->save();
+        
     }
 
     public function update(string $moduleKey, array $attributes): void
@@ -178,30 +181,30 @@ protected function normalizeModuleKey(string $key): string
         $this->save();
     }
 
-public function forgetKey(string $moduleKey, string $key): mixed
-{
-    $moduleKey = Str::lower($moduleKey);
+    public function forgetKey(string $moduleKey, string $key): mixed
+    {
+        $moduleKey = Str::lower($moduleKey);
 
-    if (!isset($this->modules[$moduleKey])) {
-        throw new \InvalidArgumentException("Module '{$moduleKey}' not found.");
+        if (!isset($this->modules[$moduleKey])) {
+            throw new \InvalidArgumentException("Module '{$moduleKey}' not found.");
+        }
+
+        if (!array_key_exists($key, $this->modules[$moduleKey])) {
+            return null;
+        }
+
+        $data = $this->modules[$moduleKey][$key];
+
+        unset($this->modules[$moduleKey][$key]);
+
+        $this->modules[$moduleKey] = $this->normalizeModule(
+            $this->modules[$moduleKey]
+        );
+
+        $this->save();
+
+        return $data;
     }
-
-    if (!array_key_exists($key, $this->modules[$moduleKey])) {
-        return null;
-    }
-
-    $data = $this->modules[$moduleKey][$key];
-
-    unset($this->modules[$moduleKey][$key]);
-
-    $this->modules[$moduleKey] = $this->normalizeModule(
-        $this->modules[$moduleKey]
-    );
-
-    $this->save();
-
-    return $data;
-}
     public function remove(string $moduleKey): void
     {
         unset($this->modules[Str::lower($moduleKey)]);
@@ -286,7 +289,7 @@ public function forgetKey(string $moduleKey, string $key): mixed
 
     protected function validateModuleEntry(array $module): void
     {
-        foreach (['module_key', 'namespace', 'path','root', 'manifest'] as $key) {
+        foreach (['module_key', 'namespace', 'path', 'root', 'manifest'] as $key) {
             if (empty($module[$key])) {
                 throw new \InvalidArgumentException("Registry entry missing {$key}");
             }
@@ -297,7 +300,8 @@ public function forgetKey(string $moduleKey, string $key): mixed
     {
         $this->validateModuleEntry($entry);
 
-        [$vendor,$context, $module] = explode('.', strtolower($entry['module_key']), 3);
+
+        [$vendor, $context, $module] = explode('.', strtolower($entry['module_key']), 3);
 
         $path = Helper::normalizePath($entry['path']);
 
@@ -310,10 +314,10 @@ public function forgetKey(string $moduleKey, string $key): mixed
             'role' => Str::studly($entry['role'] ?? 'admin'),
             'run' => (bool) ($entry['run'] ?? false),
             'namespace' => trim($entry['namespace'], '\\'),
-            'root' =>$entry['root'] ?? '' ,
+            'root' => $entry['root'] ?? '',
             'app_id' => strtolower(str_replace('.', '_', $entry['module_key'])) . '_app',
             'path' => $path,
-            'context'=>$context,
+            'context' => $context,
             'manifest' => Helper::normalizePath($entry['manifest'] ?? ''),
             'folder' => $entry['folder'] ?? 'Common',
             'is_common' => (bool) ($entry['is_common'] ?? false),

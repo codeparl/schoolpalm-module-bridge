@@ -5,117 +5,166 @@ namespace SchoolPalm\ModuleBridge\Models;
 use Illuminate\Database\Eloquent\Model as EloquentModel;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
+use SchoolPalm\ModuleBridge\Context\CurrentContext;
+use SchoolPalm\ModuleBridge\Facades\Host\Host;
 
 abstract class Model extends EloquentModel
 {
+    protected $keyType = 'string';
+
+    public $incrementing = false;
+
     /**
-     * Boot global model behaviors
+     * Module that owns this model.
+     *
+     * Generated models should override this value.
+     */
+    protected string $moduleKey;
+
+    /**
+     * Whether module context must be enforced.
+     */
+    protected bool $enforceContext = true;
+
+    /**
+     * Boot global model behaviors.
      */
     protected static function booted()
     {
         /**
-         * GLOBAL SCOPE: school filtering
+         * Enforce owning module context.
+         *
+         * This prevents another module from directly accessing
+         * this model through Eloquent.
          */
-        static::addGlobalScope('school_scope', function (Builder $builder) {
-
-            $schoolId = static::resolveSchoolId();
-
-            if ($schoolId) {
-                $table = $builder->getModel()->getTable();
-
-                $builder->where("{$table}.school_id", $schoolId);
-            }
+        static::retrieved(function ($model) {
+            $model->requireModuleContext();
         });
 
-        /**
-         * AUTO-SET school_id on create
-         */
         static::creating(function ($model) {
+
+            $model->requireModuleContext();
+
+            $keyName = $model->getKeyName();
+
+            unset($model->{$keyName});
+
+            $model->{$keyName} = (string) Str::ulid();
 
             if (Schema::hasColumn($model->getTable(), 'school_id')) {
 
-                $schoolId = static::resolveSchoolId();
+                $schoolId = Host::school()?->id;
 
-                if ($schoolId) {
-                    $model->school_id = $schoolId;
+                if ($schoolId === null) {
+                    throw new \RuntimeException(
+                        'Cannot create a school-owned model without a current school context.'
+                    );
                 }
+
+                $model->school_id = $schoolId;
             }
         });
 
-        /**
-         * Prevent accidental overwrite of school_id
-         */
         static::updating(function ($model) {
-           
-    unset($model->school_id);
 
-    // Remove user-supplied values
-    if ($model->isDirty('created_at')) {
-        $model->created_at = $model->getOriginal('created_at');
-    }
+            $model->requireModuleContext();
 
-    if ($model->isDirty('deleted_at')) {
-        $model->deleted_at = $model->getOriginal('deleted_at');
-    }
+            if (Schema::hasColumn($model->getTable(), 'school_id')) {
+                unset($model->school_id);
+            }
+
+            if ($model->isDirty('created_at')) {
+                $model->created_at = $model->getOriginal('created_at');
+            }
+
+            if ($model->isDirty('deleted_at')) {
+                $model->deleted_at = $model->getOriginal('deleted_at');
+            }
         });
-
- 
     }
 
     /**
-     * Centralized safe resolver for school ID
-     * Works with session + fallback + tenancy-safe context
+     * Require the current module context.
      */
-    protected static function resolveSchoolId(): ?int
+    protected function requireModuleContext(): void
     {
-        $key = config('sdk.current_school_session_key', 'current_school_id');
-
-        // Safe session access (NEVER assume session exists or is string-safe)
-        if (function_exists('session')) {
-            try {
-                $value = session()->get($key);
-
-                if (is_numeric($value)) {
-                    return (int) $value;
-                }
-            } catch (\Throwable $e) {
-                // ignore session failures (CLI, boot, modules)
-            }
+        if (!$this->enforceContext) {
+            return;
         }
 
-        // fallback (you can replace this with tenant school resolver)
-        return 1;
+        if (empty($this->moduleKey)) {
+            throw new \RuntimeException(
+                sprintf(
+                    'Model [%s] does not define a module key.',
+                    static::class
+                )
+            );
+        }
+
+        CurrentContext::require($this->moduleKey);
     }
 
     /**
-     * Disable school scope when needed
+     * Get the owning module key.
      */
-    public static function withoutSchoolScope()
+    public function getModuleKey(): string
     {
-        return static::withoutGlobalScope('school_scope');
+        return $this->moduleKey;
     }
 
+    /**
+     * Disable module context enforcement.
+     *
+     * Intended only for trusted internal/system operations.
+     */
+    public static function withoutModuleContext(): void
+    {
+        static::withoutGlobalScopes();
+    }
 
-   public function isDateAttribute($key)
-{
-    return in_array($key, [
-        $this->getCreatedAtColumn(),
-        $this->getUpdatedAtColumn(),
-        'deleted_at',
-    ], true)
-    || (
-        isset($this->casts[$key]) &&
-        in_array($this->casts[$key], [
-            'date',
-            'datetime',
-            'immutable_date',
-            'immutable_datetime',
+    /**
+     * Get the current school context.
+     */
+    public static function currentSchool()
+    {
+        return Host::school();
+    }
+
+    /**
+     * Get the current tenant context.
+     */
+    public static function currentTenant()
+    {
+        return Host::tenant();
+    }
+
+    /**
+     * Get the current user context.
+     */
+    public static function currentUser()
+    {
+        return Host::user();
+    }
+
+    /**
+     * Determine whether an attribute should be treated as a date.
+     */
+    public function isDateAttribute($key)
+    {
+        return in_array($key, [
+            $this->getCreatedAtColumn(),
+            $this->getUpdatedAtColumn(),
+            'deleted_at',
         ], true)
-    );
-}
-
-
-
-
-
+            || (
+                isset($this->casts[$key]) &&
+                in_array($this->casts[$key], [
+                    'date',
+                    'datetime',
+                    'immutable_date',
+                    'immutable_datetime',
+                ], true)
+            );
+    }
 }

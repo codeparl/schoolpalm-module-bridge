@@ -19,6 +19,8 @@ use SchoolPalm\ModuleBridge\Adapters\MessageDeliveryAdapter;
  * @method static ChannelMessageBuilder whatsapp()
  * @method static ChannelMessageBuilder inApp()
  * @method static MultiChannelMessageBuilder channels(array $channels)
+ * @method self view(string $view, array $data = [], bool $useKey = true)
+
  * 
  * @see \SchoolPalm\ModuleBridge\Adapters\MessageDeliveryAdapter
  */

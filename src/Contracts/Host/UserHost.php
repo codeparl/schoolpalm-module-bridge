@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace SchoolPalm\ModuleBridge\Contracts\Host;
 
+use SchoolPalm\ModuleBridge\Support\ContextData;
+
 /**
  * Interface UserHost
  *
@@ -18,37 +20,35 @@ namespace SchoolPalm\ModuleBridge\Contracts\Host;
 interface UserHost
 {
     /**
-     * Get the current user as a generic object.
-     *
-     * @return object|null Current authenticated user or null if not available.
+     * Get current user context array representation.
      */
-    public function current(): ?object;
+    public function currentArray(): ?array;
+
+    /**
+     * Get the current user context.
+     * Pass $asArray = true for background queues and view context data.
+     */
+    public function current(bool $asArray = false): null|array|ContextData;
 
     /**
      * Get the current user ID.
-     *
-     * @return int|null User identifier or null if no active user.
      */
-    public function id(): ?int;
+    public function id(): int|string|null;
 
     /**
      * Get the user's email address.
-     *
-     * @return string|null Email or null if not available.
      */
     public function email(): ?string;
 
     /**
      * Get the user's roles.
      *
-     * @return array List of role names assigned to the user.
+     * @return array<string> List of role names assigned to the user.
      */
     public function roles(): array;
 
     /**
      * Get the current active portal (e.g. admin, teacher, student).
-     *
-     * @return string|null Active portal identifier.
      */
     public function currentPortal(): ?string;
 }

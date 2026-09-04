@@ -20,10 +20,10 @@ final class ManifestMigrations
         return $this->data['path'] ?? 'Database/migrations';
     }
 
-     public function seedersPath(): string
+    public function seedersPath(): string
     {
-        return Helper::beforeLast($this->path(),DIRECTORY_SEPARATOR)
-        .'/Seeders';
+        return Helper::beforeLast($this->path(), DIRECTORY_SEPARATOR)
+            . '/Seeders';
     }
 
     public function runOnInstall(): bool
@@ -41,10 +41,10 @@ final class ManifestMigrations
         return $isInstall ? $this->runOnInstall() : $this->runOnUpdate();
     }
 
-     public function tables(bool $onlyModels = false): array
+    public function tables(bool $onlyModels = false): array
     {
-        if($onlyModels){
-            return collect($this->data['tables'] ?? [])->filter(fn($t)=> $t['model'] )->toArray();
+        if ($onlyModels) {
+            return collect($this->data['tables'] ?? [])->filter(fn($t) => $t['model'])->toArray();
         }
 
         return $this->data['tables'] ?? [];

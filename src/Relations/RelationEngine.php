@@ -47,7 +47,7 @@ class RelationEngine
         ?RelationCache $cache = null,
         ?RelationConfigValidator $validator = null
     ) {
-        $this->registry = empty($registry) ?resolve('module.relations')  : $registry;
+        $this->registry = empty($registry) ? resolve('module.relations')  : $registry;
 
         $this->cache = $cache ?? new RelationCache();
         $this->validator = $validator ?? new RelationConfigValidator();
@@ -73,12 +73,9 @@ class RelationEngine
 
             // scoped index
             $scope = implode('.', array_slice($parts, 0, 3));
- 
-            $this->scopedIndex[$scope][$lastSegment][] = $fullKey;
 
-           
+            $this->scopedIndex[$scope][$lastSegment][] = $fullKey;
         }
-    
     }
 
     /*
@@ -111,7 +108,7 @@ class RelationEngine
                     $this->scopedIndex[$scope][$relationKey][0] ?? null;
             }
 
-           
+
 
             /*
             |--------------------------------------------------------------------------
@@ -125,14 +122,14 @@ class RelationEngine
                 $resolvedKey =
                     $this->globalIndex[$relationKey][0] ?? null;
             }
- 
+
             if (
                 !$resolvedKey ||
                 !isset($this->registry[$resolvedKey])
             ) {
                 continue;
             }
-           
+
 
             $config = $this->registry[$resolvedKey];
             $type = $config['type'] ?? 'belongsTo';
@@ -166,8 +163,6 @@ class RelationEngine
                     $config,
                     $this
                 );
-                 
-
             } catch (\Throwable $e) {
 
                 if ($this->strictValidation) {
@@ -186,7 +181,7 @@ class RelationEngine
             | NESTED RELATIONS
             |--------------------------------------------------------------------------
             */
-            
+
             if (!empty($nested)) {
 
                 foreach ($items as &$item) {
@@ -195,14 +190,13 @@ class RelationEngine
                         continue;
                     }
 
-                    
+
                     $related = $item[$relationName];
 
                     if (is_array($related)) {
 
                         $item[$relationName] =
                             $this->load($related, $nested);
-
                     } elseif (is_object($related)) {
 
                         $item[$relationName] =
@@ -227,15 +221,28 @@ class RelationEngine
 
         foreach ($relations as $relation) {
 
-            if (str_contains($relation, '.')) {
+            // Separate relation name from optional module scope.
+            [$relationName, $scope] = $this->parseScopedName($relation);
 
-                [$parent, $child] = explode('.', $relation, 2);
+            // Handle nested relations on the relation name only.
+            if (str_contains($relationName, '.')) {
 
-                $parsed[$parent][] = $child;
-
+                [$parent, $child] = explode('.', $relationName, 2);
             } else {
 
-                $parsed[$relation] = [];
+                $parent = $relationName;
+                $child = null;
+            }
+
+            // Rebuild the expression with its scope.
+            $key = $scope !== null
+                ? $parent . '@' . $scope
+                : $parent;
+
+            if ($child !== null) {
+                $parsed[$key][] = $child;
+            } else {
+                $parsed[$key] ??= [];
             }
         }
 

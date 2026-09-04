@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "ebb8e9a868da4aa2d0f152d41565b96d",
+    "content-hash": "baae8b3465bbdc203f385329856d9f2f",
     "packages": [
         {
             "name": "bacon/bacon-qr-code",
@@ -4672,16 +4672,16 @@
         },
         {
             "name": "schoolpalm/app-settings",
-            "version": "1.1.0",
+            "version": "2.0.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/codeparl/app-settings.git",
-                "reference": "a96a917b4dbd5e49e80c4e385e2c28297dd643e9"
+                "reference": "c862d7e208919ab14fdfb518a627d7a595fc3fd3"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/codeparl/app-settings/zipball/a96a917b4dbd5e49e80c4e385e2c28297dd643e9",
-                "reference": "a96a917b4dbd5e49e80c4e385e2c28297dd643e9",
+                "url": "https://api.github.com/repos/codeparl/app-settings/zipball/c862d7e208919ab14fdfb518a627d7a595fc3fd3",
+                "reference": "c862d7e208919ab14fdfb518a627d7a595fc3fd3",
                 "shasum": ""
             },
             "require": {
@@ -4747,7 +4747,7 @@
                     "type": "other"
                 }
             ],
-            "time": "2026-08-03T02:52:57+00:00"
+            "time": "2026-08-07T01:58:18+00:00"
         },
         {
             "name": "schoolpalm/cache-store",
@@ -4833,16 +4833,16 @@
         },
         {
             "name": "schoolpalm/document-builder",
-            "version": "1.0.0",
+            "version": "1.1.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/codeparl/document-builder.git",
-                "reference": "beb754706810c7e92a5ca66a911aa969c5b8e84c"
+                "reference": "b10e22569c1c98b35f57f2063d8de5071e28e7c6"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/codeparl/document-builder/zipball/beb754706810c7e92a5ca66a911aa969c5b8e84c",
-                "reference": "beb754706810c7e92a5ca66a911aa969c5b8e84c",
+                "url": "https://api.github.com/repos/codeparl/document-builder/zipball/b10e22569c1c98b35f57f2063d8de5071e28e7c6",
+                "reference": "b10e22569c1c98b35f57f2063d8de5071e28e7c6",
                 "shasum": ""
             },
             "require": {
@@ -4915,22 +4915,22 @@
             ],
             "support": {
                 "issues": "https://github.com/UnnovateBrains/document-builder/issues",
-                "source": "https://github.com/codeparl/document-builder/tree/v1.0.0"
+                "source": "https://github.com/codeparl/document-builder/tree/v1.1.0"
             },
-            "time": "2026-08-01T20:51:20+00:00"
+            "time": "2026-08-05T05:04:11+00:00"
         },
         {
             "name": "schoolpalm/message-delivery",
-            "version": "1.0.1",
+            "version": "2.5.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/codeparl/message-delivery.git",
-                "reference": "d4ef4c9834f92d08c48237a19fb3745b6101d368"
+                "reference": "d7dfe72fc178c099548c9d4824bfd8f17902f1dd"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/codeparl/message-delivery/zipball/d4ef4c9834f92d08c48237a19fb3745b6101d368",
-                "reference": "d4ef4c9834f92d08c48237a19fb3745b6101d368",
+                "url": "https://api.github.com/repos/codeparl/message-delivery/zipball/d7dfe72fc178c099548c9d4824bfd8f17902f1dd",
+                "reference": "d7dfe72fc178c099548c9d4824bfd8f17902f1dd",
                 "shasum": ""
             },
             "require": {
@@ -5008,20 +5008,20 @@
                     "type": "other"
                 }
             ],
-            "time": "2026-08-03T09:45:22+00:00"
+            "time": "2026-08-10T06:45:38+00:00"
         },
         {
             "name": "schoolpalm/queued-jobs",
-            "version": "1.1.0",
+            "version": "1.3.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/codeparl/queued-jobs.git",
-                "reference": "48f16398f5d7bb5c2caf8602865cf4e033466ae6"
+                "reference": "93f329587b72e74f1434e5d172cc12686cd09b1b"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/codeparl/queued-jobs/zipball/48f16398f5d7bb5c2caf8602865cf4e033466ae6",
-                "reference": "48f16398f5d7bb5c2caf8602865cf4e033466ae6",
+                "url": "https://api.github.com/repos/codeparl/queued-jobs/zipball/93f329587b72e74f1434e5d172cc12686cd09b1b",
+                "reference": "93f329587b72e74f1434e5d172cc12686cd09b1b",
                 "shasum": ""
             },
             "require": {
@@ -5068,9 +5068,9 @@
             "description": "A Laravel queue infrastructure package that preserves application execution context when dispatching queued jobs.",
             "support": {
                 "issues": "https://github.com/codeparl/queued-jobs/issues",
-                "source": "https://github.com/codeparl/queued-jobs/tree/v1.1.0"
+                "source": "https://github.com/codeparl/queued-jobs/tree/v1.3.0"
             },
-            "time": "2026-07-29T08:38:41+00:00"
+            "time": "2026-08-08T06:42:09+00:00"
         },
         {
             "name": "setasign/fpdf",
@@ -12044,7 +12044,7 @@
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {
-        "php": "^8.1"
+        "php": "^8.3"
     },
     "platform-dev": {},
     "plugin-api-version": "2.6.0"

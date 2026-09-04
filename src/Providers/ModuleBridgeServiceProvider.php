@@ -9,13 +9,13 @@ use SchoolPalm\ModuleBridge\Core\ModuleAutoload;
 use SchoolPalm\ModuleBridge\Support\EncryptedConfig;
 use SchoolPalm\ModuleBridge\Support\LevelManager;
 use Composer\Autoload\ClassLoader;
+use Illuminate\Support\Facades\Event;
 use SchoolPalm\AppSettings\Managers\SettingsManager;
-
 use SchoolPalm\CacheStore\Contracts\CacheContextResolver as CacheContextResolverContract;
 use SchoolPalm\CacheStore\Manager\CacheStoreManager;
+use SchoolPalm\MessageDelivery\Contracts\TenantProviderSettings;
 use SchoolPalm\ModuleBridge\Adapters\CacheAdapter;
 use SchoolPalm\ModuleBridge\Adapters\Document\SchoolPalmDocumentContextHandler;
-use SchoolPalm\ModuleBridge\Adapters\DocumentHost;
 use SchoolPalm\ModuleBridge\Adapters\LoggerAdapter;
 use SchoolPalm\ModuleBridge\Adapters\MessageDeliveryAdapter;
 use SchoolPalm\ModuleBridge\Adapters\QueuedJobsAdapter;
@@ -36,6 +36,7 @@ use SchoolPalm\ModuleBridge\Services\Host\SchoolHostService;
 use SchoolPalm\ModuleBridge\Services\Host\TenantHostService;
 use SchoolPalm\ModuleBridge\Services\Host\UserHostService;
 use SchoolPalm\ModuleBridge\Snapshot\SnapshotRegistry;
+use SchoolPalm\ModuleBridge\Console\SyncConfigCommand;
 use UnnovateBrains\DocumentBuilder\Contracts\DocumentStorage;
 use SchoolPalm\ModuleBridge\Services\Host\ModuleHostService;
 use SchoolPalm\QueuedJobs\Managers\QueuedJobsManager;
@@ -54,7 +55,9 @@ use SchoolPalm\MessageDelivery\Notification\Contracts\{
 };
 use SchoolPalm\MessageDelivery\Notification\Engine\NotificationEngine;
 use SchoolPalm\MessageDelivery\Notification\NotificationManager;
+use SchoolPalm\ModuleBridge\Adapters\DocumentAdapter;
 use SchoolPalm\ModuleBridge\Adapters\NotificationAdapter;
+use SchoolPalm\ModuleBridge\Listeners\NotificationEventSubscriber;
 use SchoolPalm\ModuleBridge\Resolvers\{
     BridgeEventResolver,
     BridgeRecipientResolver,
@@ -76,7 +79,11 @@ class ModuleBridgeServiceProvider extends ServiceProvider
             'module-bridge'
         );
 
-        // Created registry
+        $this->mergeBridgeModuleConfigs();
+
+        /**
+         * Global / Stateless Registries (Keep as Singletons)
+         */
         if (config('sdk.runtime', 'SDK') == 'SDK') {
             $this->app->singleton('created.registry', function ($app) {
                 $path = config('sdk.registry_path');
@@ -91,7 +98,6 @@ class ModuleBridgeServiceProvider extends ServiceProvider
             );
         });
 
-        // Autoload registry
         $this->app->singleton('autoload.registry', function ($app) {
             $path = config('sdk.autoload_registry_path');
             return new AutoloadModuleRegistry($path);
@@ -121,7 +127,7 @@ class ModuleBridgeServiceProvider extends ServiceProvider
         }
 
         /**
-         * Core Host bindings
+         * Core Host Bindings (Keep as Singletons)
          */
         $this->app->singleton(TenantHost::class, TenantHostService::class);
         $this->app->singleton(SchoolHost::class, SchoolHostService::class);
@@ -138,11 +144,10 @@ class ModuleBridgeServiceProvider extends ServiceProvider
         });
 
         /**
-         * Context Resolver Bindings
+         * Context Resolver Bindings (Stateless Service - Singleton)
          */
         $this->app->singleton(ContextResolver::class);
 
-        // BIND EXACT CACHECTX CONTRACT TO CONTEXTRESOLVER
         $this->app->singleton(
             CacheContextResolverContract::class,
             ContextResolver::class
@@ -159,43 +164,41 @@ class ModuleBridgeServiceProvider extends ServiceProvider
         );
 
         /**
-         * Adapters & Utilities
+         * Context-Aware Adapters (Bound Transiency for Dynamic Context)
          */
-        $this->app->singleton('module.storage', function ($app) {
+        $this->app->bind('module.storage', function ($app) {
             return new StorageAdapter(
                 $app->make(DocumentStorage::class),
                 $app->make(ContextResolver::class)
             );
         });
 
-        $this->app->singleton(DocumentHost::class, function ($app) {
-            return new DocumentHost(
-                $app->make(ContextResolver::class)
-            );
-        });
-
-        $this->app->singleton(LoggerAdapter::class, function ($app) {
+        $this->app->bind(LoggerAdapter::class, function ($app) {
             return new LoggerAdapter(
                 $app->make(ContextResolver::class)
             );
         });
 
-        $this->app->singleton(SettingsAdapter::class, function ($app) {
+        $this->app->bind(SettingsAdapter::class, function ($app) {
             return new SettingsAdapter(
                 $app->make(SettingsManager::class),
                 $app->make(ContextResolver::class)
             );
         });
 
-        $this->app->singleton(CacheAdapter::class, function ($app) {
+        $this->app->bind(CacheAdapter::class, function ($app) {
             return new CacheAdapter(
                 $app->make(CacheStoreManager::class),
                 $app->make(ContextResolver::class)
             );
         });
 
+        $this->app->bind(
+            TenantProviderSettings::class,
+            ContextResolver::class
+        );
 
-        $this->app->singleton(
+        $this->app->bind(
             'module-bridge.message-delivery',
             fn($app) => new MessageDeliveryAdapter(
                 contextResolver: $app->make(ContextResolver::class)
@@ -219,20 +222,26 @@ class ModuleBridgeServiceProvider extends ServiceProvider
         $this->app->bind(ScheduleResolver::class, BridgeScheduleResolver::class);
         $this->app->bind(TemplateResolver::class, BridgeTemplateResolver::class);
 
-
-        // 3. Bind the NotificationManager
+        /**
+         * Notification & Document Managers/Adapters (Bound dynamically)
+         */
         $this->app->singleton(NotificationManager::class, function ($app) {
             return new NotificationManager(
                 $app->make(NotificationEngine::class)
             );
         });
 
-        // 4. Bind the NotificationAdapter used by the Facade
-        $this->app->singleton(NotificationAdapter::class, function ($app) {
+        $this->app->bind(NotificationAdapter::class, function ($app) {
             return new NotificationAdapter(
                 $app->make(ContextResolver::class),
                 $app->make(NotificationManager::class),
                 $app
+            );
+        });
+
+        $this->app->bind(DocumentAdapter::class, function ($app) {
+            return new DocumentAdapter(
+                $app->make(ContextResolver::class)
             );
         });
     }
@@ -246,9 +255,18 @@ class ModuleBridgeServiceProvider extends ServiceProvider
             __DIR__ . '/../Support/config/module-bridge.php' => config_path('module-bridge.php'),
         ], 'config');
 
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                SyncConfigCommand::class,
+            ]);
+        }
+
         if (config('sdk.runtime', 'SDK') == 'SDK') {
             $this->app->make('module.autoload')->boot();
         }
+
+        // Automatically register the global notification event subscriber
+        //  Event::subscribe(NotificationEventSubscriber::class);
     }
 
     protected function resolveComposerLoader(): ClassLoader
@@ -260,5 +278,19 @@ class ModuleBridgeServiceProvider extends ServiceProvider
         }
 
         throw new \RuntimeException('Composer ClassLoader not found.');
+    }
+
+    private function mergeBridgeModuleConfigs(): void
+    {
+        $bridgeConfigDirectory = __DIR__ . '/../Support/config/module-bridge';
+
+        if (! is_dir($bridgeConfigDirectory)) {
+            return;
+        }
+
+        foreach (glob($bridgeConfigDirectory . '/*.php') ?: [] as $filePath) {
+            $configKey = 'module-bridge.' . basename($filePath, '.php');
+            $this->mergeConfigFrom($filePath, $configKey);
+        }
     }
 }

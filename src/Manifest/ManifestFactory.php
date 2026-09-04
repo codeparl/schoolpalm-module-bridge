@@ -17,7 +17,7 @@ class ManifestFactory
 
         $name        = $data['name'];
         $vendor      = $data['vendor'] ?? $config['vendor'] ?? 'SchoolPalm';
-
+        $label        = $data['label'] ?? $name;
         $role        = $data['role'] ?? $config['defaults']['role'] ?? 'admin';
         $version     = '1.0.0';
         $type        = $data['type'] ?? $config['defaults']['type'] ?? 'external';
@@ -96,9 +96,9 @@ class ManifestFactory
 
         ];
 
-         $relations =  $namespace . '\\Relations\\' . self::deriveName($moduleKey,'Relations','module');
+        $relations =  $namespace . '\\Relations\\' . self::deriveName($moduleKey, 'Relations', 'module');
 
-        
+
 
         $actionEntry  =  $namespace . '\\ModuleActionEntry';
 
@@ -111,7 +111,7 @@ class ManifestFactory
             'path' => $frontend['assets'] . '/module-icon.svg',
             'themeable' => true
         ];
-        $joined_curricula =  $joined_curricula ? '.'.$joined_curricula : '';
+        $joined_curricula =  $joined_curricula ? '.' . $joined_curricula : '';
         $context  = strtolower($_level . $joined_curricula);
         $provides = [];
         if (is_array($data['provides'] ?? []) && count($data['provides']) > 0) {
@@ -124,12 +124,13 @@ class ManifestFactory
         }
 
 
-            $dtos = self::deriveDtos($provides);
+        $dtos = self::deriveDtos($provides);
         // Keep events empty if not supplied
-      //  $events = self::generateEvents($namespace, Str::singular($moduleName))['events'];
+        //  $events = self::generateEvents($namespace, Str::singular($moduleName))['events'];
         $sdk = ['name' => 'schoolpalm/module-sdk', 'version' => SdkVersion::current()];
         return [
             'name'         => $name,
+            'label'        => $label,
             'namespace' => $namespace,
             'vendor'       => $vendor,
             'prefix' => $data['prefix'] ?? self::prefix($moduleKey),
@@ -146,8 +147,8 @@ class ManifestFactory
             'role'         => $role,
             'actions'      => $actions,
             'entry'        => $entry,
-            'relations'      =>$relations,
-            'actionEntry'  =>$actionEntry,
+            'relations'      => $relations,
+            'actionEntry'  => $actionEntry,
             'author'       => $author,
             'dependencies' => (object) $dependencies,
             'frontend'     => $frontend,
@@ -160,7 +161,7 @@ class ManifestFactory
             'models'       => $models,
             'events'       => [],
             'provides'     => $provides,
-            'dtos'         => $dtos ,
+            'dtos'         => $dtos,
             'requires'     => $data['requires'] ?? ['modules' => new \stdClass()],
         ];
     }
@@ -204,42 +205,42 @@ class ManifestFactory
     }
 
     public static function deriveName(
-    string $key,
-    string $suffix = '',
-    string $part = 'full',
-): string {
+        string $key,
+        string $suffix = '',
+        string $part = 'full',
+    ): string {
 
-    $segments = explode('.', $key);
+        $segments = explode('.', $key);
 
-    $name = match ($part) {
+        $name = match ($part) {
 
-        'vendor' =>
+            'vendor' =>
             Str::studly($segments[0] ?? ''),
 
-        'context' =>
+            'context' =>
             Str::studly($segments[1] ?? ''),
 
-        'module' =>
+            'module' =>
             Str::studly($segments[2] ?? ''),
 
-        'full' =>
+            'full' =>
             collect($segments)
-                ->map(fn ($segment) => Str::studly($segment))
+                ->map(fn($segment) => Str::studly($segment))
                 ->implode(''),
 
-        default =>
+            default =>
             collect($segments)
                 ->slice(3)
-                ->map(fn ($segment) => Str::studly($segment))
+                ->map(fn($segment) => Str::studly($segment))
                 ->implode(''),
-    };
+        };
 
-    if ($suffix) {
-        $name .= Str::studly($suffix);
+        if ($suffix) {
+            $name .= Str::studly($suffix);
+        }
+
+        return $name;
     }
-
-    return $name;
-}
 
     public static function prefix(string $key): string
     {
@@ -249,58 +250,173 @@ class ManifestFactory
         ));
     }
 
-    public static function normalizeJson(array &$data, array $schema, string $path = ''): void
-    {
-        if (!isset($schema['properties']) || !is_array($schema['properties'])) {
+    public static function normalizeJson(
+        array &$data,
+        array $schema,
+        string $path = ''
+    ): void {
+        if (
+            !isset($schema['properties']) ||
+            !is_array($schema['properties'])
+        ) {
             return;
         }
 
         foreach ($schema['properties'] as $key => $propertySchema) {
-            $currentPath = $path === '' ? $key : "{$path}.{$key}";
+
+            if (!is_array($propertySchema)) {
+                continue;
+            }
+
+            $currentPath = $path === ''
+                ? $key
+                : "{$path}.{$key}";
+
             $valueExists = array_key_exists($key, $data);
-            $value = $valueExists ? $data[$key] : null;
+            $value = $valueExists
+                ? $data[$key]
+                : null;
+
+            $type = $propertySchema['type'] ?? null;
 
             // --------------------------------------------------
-            // CASE 1: OBJECT normalization
+            // CASE 1: OBJECT
             // --------------------------------------------------
-            if (($propertySchema['type'] ?? null) === 'object') {
-                $hasRequiredProps = isset($propertySchema['required']);
-                $isMapObject = isset($propertySchema['additionalProperties']);
+            if ($type === 'object') {
 
-                // Normalize missing value
+                /*
+             * A map object is ONLY an object where
+             * additionalProperties contains a schema.
+             *
+             * additionalProperties: false is NOT a map.
+             */
+                $additionalProperties =
+                    $propertySchema['additionalProperties'] ?? null;
+
+                $isMapObject =
+                    is_array($additionalProperties);
+
+                /*
+             * Add default value if one exists.
+             */
                 if (!$valueExists) {
-                    if (isset($propertySchema['default'])) {
-                        $data[$key] = $propertySchema['default'];
-                    } elseif ($isMapObject && !$hasRequiredProps) {
-                        $data[$key] = (object)[];
+
+                    if (array_key_exists('default', $propertySchema)) {
+
+                        $data[$key] =
+                            $propertySchema['default'];
+
+                        $valueExists = true;
+                        $value = $data[$key];
+                    }
+
+                    /*
+                 * Map objects should become an empty object,
+                 * not an empty array.
+                 */ elseif ($isMapObject) {
+
+                        $data[$key] = (object) [];
+
+                        $valueExists = true;
+                        $value = $data[$key];
                     }
                 }
 
-                // Normalize [] → {}
-                if ($valueExists && is_array($value) && empty($value) && $isMapObject) {
-                    $data[$key] = (object)[];
+                /*
+             * Normalize [] → {} ONLY for map objects.
+             *
+             * Do NOT do this for ordinary objects such as
+             * migrations.
+             */
+                if (
+                    $valueExists &&
+                    $isMapObject &&
+                    is_array($value) &&
+                    empty($value)
+                ) {
+                    $data[$key] = (object) [];
+
+                    $value = $data[$key];
                 }
 
-                // Recurse if object now exists
-                if (isset($data[$key]) && is_array($data[$key])) {
-                    self::normalizeJson($data[$key], $propertySchema, $currentPath);
+                /*
+             * Recursively normalize normal PHP arrays.
+             */
+                if (
+                    isset($data[$key]) &&
+                    is_array($data[$key])
+                ) {
+                    self::normalizeJson(
+                        $data[$key],
+                        $propertySchema,
+                        $currentPath
+                    );
                 }
 
-                if (isset($data[$key]) && is_object($data[$key])) {
-                    // Convert object to array temporarily for recursion
+                /*
+             * Recursively normalize stdClass objects.
+             */ elseif (
+                    isset($data[$key]) &&
+                    is_object($data[$key])
+                ) {
                     $tmp = (array) $data[$key];
-                    self::normalizeJson($tmp, $propertySchema, $currentPath);
+
+                    self::normalizeJson(
+                        $tmp,
+                        $propertySchema,
+                        $currentPath
+                    );
+
                     $data[$key] = (object) $tmp;
                 }
             }
 
             // --------------------------------------------------
-            // CASE 2: ARRAY recursion (items)
+            // CASE 2: ARRAY
             // --------------------------------------------------
-            if (($propertySchema['type'] ?? null) === 'array' && isset($propertySchema['items']) && $valueExists && is_array($value)) {
+            elseif (
+                $type === 'array' &&
+                isset($propertySchema['items']) &&
+                $valueExists &&
+                is_array($value)
+            ) {
+
+                $itemsSchema = $propertySchema['items'];
+
                 foreach ($value as $index => $item) {
-                    if (is_array($item) && isset($propertySchema['items']['properties'])) {
-                        self::normalizeJson($data[$key][$index], $propertySchema['items'], "{$currentPath}[{$index}]");
+
+                    /*
+                 * Only recurse into object array items.
+                 */
+                    if (
+                        is_array($item) &&
+                        isset($itemsSchema['properties']) &&
+                        is_array($itemsSchema['properties'])
+                    ) {
+                        self::normalizeJson(
+                            $data[$key][$index],
+                            $itemsSchema,
+                            "{$currentPath}[{$index}]"
+                        );
+                    }
+
+                    /*
+                 * Also support object items represented
+                 * as stdClass.
+                 */ elseif (
+                        is_object($item) &&
+                        isset($itemsSchema['properties']) &&
+                        is_array($itemsSchema['properties'])
+                    ) {
+                        $tmp = (array) $item;
+
+                        self::normalizeJson(
+                            $tmp,
+                            $itemsSchema,
+                            "{$currentPath}[{$index}]"
+                        );
+
+                        $data[$key][$index] = (object) $tmp;
                     }
                 }
             }
@@ -332,83 +448,86 @@ class ManifestFactory
     }
 
 
-   public static function update($existingManifest, array $data, string $filePath)
-{
-    $provides = $data['provides'] ?? $existingManifest['provides'] ?? [];
-    $relation =  RelationSpec::normalizeRelations($data['relation'] ?? []);
-    $dtos = self::deriveDtos($provides);
-    $namespace = $existingManifest['namespace'];
-    $module_key = $existingManifest['module_key'];
-    $relations =  $namespace . '\\Relations\\' . self::deriveName($module_key,'Relations','module');
-    $updatedManifest = array_merge($existingManifest, [
+    public static function update($existingManifest, array $data, string $filePath)
+    {
+        $provides = $data['provides'] ?? $existingManifest['provides'] ?? [];
+        $relation =  RelationSpec::normalizeRelations($data['relation'] ?? []);
+        $dtos = self::deriveDtos($provides);
+        $namespace = $existingManifest['namespace'];
+        $module_key = $existingManifest['module_key'];
+        $relations =  $namespace . '\\Relations\\' . self::deriveName($module_key, 'Relations', 'module');
+        $updatedManifest = array_merge($existingManifest, [
 
-        // -------------------------
-        // Core fields (safe merge)
-        // -------------------------
-        'name'        => $data['name'] ?? $existingManifest['name'],
-        'description' => $data['description'] ?? $existingManifest['description'],
-        'version'     => $data['version'] ?? $existingManifest['version'],
-        'icon'        => $data['icon'] ?? $existingManifest['icon'] ?? 'lucide-Layers',
-        'prefix'      => $data['prefix'] ?? self::prefix($data['module_key'] ?? $existingManifest['module_key']),
+            // -------------------------
+            // Core fields (safe merge)
+            // -------------------------
+            'name'        => $data['name'] ?? $existingManifest['name'],
+            'label'        => $data['label'] ?? $existingManifest['label'],
+            'description' => $data['description'] ?? $existingManifest['description'],
+            'version'     => $data['version'] ?? $existingManifest['version'],
+            'icon'        => $data['icon'] ?? $existingManifest['icon'] ?? 'lucide-Layers',
+            'prefix'      => $data['prefix'] ?? self::prefix($data['module_key'] ?? $existingManifest['module_key']),
 
-        // -------------------------
-        // UI / structure
-        // -------------------------
-        'menus'       => $data['menus'] ?? $existingManifest['menus'],
+            // -------------------------
+            // UI / structure
+            // -------------------------
+            'menus'       => $data['menus'] ?? $existingManifest['menus'],
 
-        // -------------------------
-        // Contracts / DTOs
-        // -------------------------
-        'provides'    => $provides,
-        'dtos'        => $dtos,
-        'relations'    => $data['relations'] ?? $relations,
+            // -------------------------
+            // Contracts / DTOs
+            // -------------------------
+            'provides'    => $provides,
+            'dtos'        => $dtos,
+            'relations'    => $data['relations'] ?? $relations,
 
-        // -------------------------
-        // IMPORTANT FIX: safe fallback
-        // -------------------------
-        'migrations'  => $data['migrations'] ?? $existingManifest['migrations'] ?? [],
-        'actions'     => $data['actions'] ?? $existingManifest['actions'] ?? [],
+            // -------------------------
+            // IMPORTANT FIX: safe fallback
+            // -------------------------
+            'migrations'  => $data['migrations'] ?? $existingManifest['migrations'] ?? [],
+            'actions'     => $data['actions'] ?? $existingManifest['actions'] ?? [],
 
-        // -------------------------
-        // Optional fields (safe)
-        // -------------------------
-        'events'      => $data['events'] ?? $existingManifest['events'] ?? [],
+            // -------------------------
+            // Optional fields (safe)
+            // -------------------------
+            'events'      => $data['events'] ?? $existingManifest['events'] ?? [],
 
-    ]);
+        ]);
 
-    ManifestValidator::validate($updatedManifest);
-    Helper::storeJson($filePath, $updatedManifest);
-    $relationPath  = dirname($filePath).'/Backend/Relations';
+        ManifestValidator::validate($updatedManifest);
+        Helper::storeJson($filePath, $updatedManifest);
+        $relationPath  = dirname($filePath) . '/Backend/Relations';
 
-    //update relations 
-    if(File::exists($relationPath) && File::isDirectory($relationPath))
-           Helper::syncRelationsFromUI($updatedManifest,$relation,$relationPath);
-}
+        //update relations
+        if (File::exists($relationPath) && File::isDirectory($relationPath))
+            Helper::syncRelationsFromUI($updatedManifest, $relation, $relationPath);
+
+        return $updatedManifest;
+    }
 
 
     public static function deriveDtos(array $provides): array
-{
-    $dtos = [];
+    {
+        $dtos = [];
 
-    foreach ($provides as $contract) {
+        foreach ($provides as $contract) {
 
-        $contractName = Helper::afterLast($contract, '\\');
+            $contractName = Helper::afterLast($contract, '\\');
 
-        // Only process valid contracts
-        if (!str_ends_with($contractName, 'Contract')) {
-            continue;
+            // Only process valid contracts
+            if (!str_ends_with($contractName, 'Contract')) {
+                continue;
+            }
+
+            // Convert Contract → Data
+            $dtoName = str_replace('Contract', 'Data', $contractName);
+
+            // Replace namespace Contracts → DTOs
+            $baseNamespace = Helper::beforeLast($contract, '\\');
+            $dtoNamespace = str_replace('\\Contracts', '\\DTOs', $baseNamespace);
+
+            $dtos[] = $dtoNamespace . '\\' . $dtoName;
         }
 
-        // Convert Contract → Data
-        $dtoName = str_replace('Contract', 'Data', $contractName);
-
-        // Replace namespace Contracts → DTOs
-        $baseNamespace = Helper::beforeLast($contract, '\\');
-        $dtoNamespace = str_replace('\\Contracts', '\\DTOs', $baseNamespace);
-
-        $dtos[] = $dtoNamespace . '\\' . $dtoName;
+        return array_values(array_unique($dtos));
     }
-
-    return array_values(array_unique($dtos));
-}
 }

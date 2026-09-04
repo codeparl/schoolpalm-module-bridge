@@ -15,20 +15,33 @@ class BridgePriorityResolver implements PriorityResolver
         protected ContextResolver $contextResolver
     ) {}
 
+    /**
+     * Resolve the delivery priority for a notification event.
+     */
     public function resolve(NotificationEvent $event): ?string
     {
-        if ($event->requestedPriority !== null) {
-            return $event->requestedPriority;
+        // 1. Explicitly requested priority on dispatch builder takes highest precedence
+        if (! empty($event->requestedPriority) && is_string($event->requestedPriority)) {
+            return trim($event->requestedPriority);
         }
 
-        $schoolId = $event->context['school_id'] ?? $this->contextResolver->schoolId();
-        $tenantId = $event->context['tenant_id'] ?? $this->contextResolver->tenantId();
+        // 2. Event-specific priority setting (e.g., notifications.priorities.student.admitted)
+        $eventPriority = SettingsHost::group('notifications')
+            ->get("priorities.{$event->event}");
 
-        $priority = SettingsHost::forTenant($tenantId)
-            ->forSchool($schoolId)
-            ->group('notifications')
-            ->get("priorities.{$event->event}", null);
+        if (is_string($eventPriority) && ! empty(trim($eventPriority))) {
+            return trim($eventPriority);
+        }
 
-        return $priority !== null ? (string) $priority : null;
+        // 3. System-wide default priority setting
+        $defaultPriority = SettingsHost::group('notifications')
+            ->get('default_priority');
+
+        if (is_string($defaultPriority) && ! empty(trim($defaultPriority))) {
+            return trim($defaultPriority);
+        }
+
+        // 4. Default fallback priority level
+        return 'normal';
     }
 }

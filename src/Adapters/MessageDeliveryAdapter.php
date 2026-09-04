@@ -4,14 +4,16 @@ declare(strict_types=1);
 
 namespace SchoolPalm\ModuleBridge\Adapters;
 
-use SchoolPalm\MessageDelivery\Builders\ChannelMessageBuilder;
-use SchoolPalm\MessageDelivery\Builders\MultiChannelMessageBuilder;
 use SchoolPalm\MessageDelivery\Context\MessageContext;
 use SchoolPalm\MessageDelivery\MessageDelivery;
+use SchoolPalm\ModuleBridge\Adapters\MessageDeliveryProxy;
 use SchoolPalm\ModuleBridge\Services\ContextResolver;
 
 class MessageDeliveryAdapter
 {
+    /**
+     * Explicit context overrides and accumulated state.
+     */
     protected array $contextData = [];
 
     public function __construct(
@@ -19,19 +21,19 @@ class MessageDeliveryAdapter
     ) {}
 
     /**
-     * Explicitly scope execution to a specific school.
+     * Explicitly scope execution to a specific school (Immutable).
      */
     public function forSchool(?string $schoolId = null): static
     {
         $clone = clone $this;
-        $clone->contextData['school_id'] = $schoolId ?? $this->contextResolver->schoolId();
+        $clone->contextData['school_id'] = $schoolId ?? $this->contextResolver->schoolId(true);
         $clone->contextData['tenant_id'] ??= $this->contextResolver->tenantId();
 
         return $clone;
     }
 
     /**
-     * Explicitly scope execution to a specific tenant.
+     * Explicitly scope execution to a specific tenant (Immutable).
      */
     public function forTenant(?string $tenantId = null): static
     {
@@ -42,12 +44,13 @@ class MessageDeliveryAdapter
     }
 
     /**
-     * Set explicit custom context key-value pairs.
+     * Merge array or MessageContext into the adapter context data (Immutable).
      */
     public function withContext(array|MessageContext $context): static
     {
         $clone = clone $this;
         $data = $context instanceof MessageContext ? $context->all() : $context;
+
         $clone->contextData = array_merge($clone->contextData, $data);
 
         return $clone;
@@ -55,18 +58,18 @@ class MessageDeliveryAdapter
 
     /**
      * Merge ambient application context with explicit overrides.
-     * Custom context takes priority over ambient defaults.
      */
     public function withAutoScope(): static
     {
         $ambient = array_filter([
-            'tenant_id' => $this->contextResolver->tenantId(),
-            'school_id' => $this->contextResolver->schoolId(),
-            'module'    => $this->contextResolver->currentModule(),
-        ], fn($val) => $val !== null);
+            'tenant_id'  => $this->contextResolver->tenantId(),
+            'school_id'  => $this->contextResolver->schoolId(true),
+            'user_id'    => $this->contextResolver->userId(),
+            'module'     => $this->contextResolver->currentModule(),
+            'module_key' => $this->contextResolver->currentModuleKey(),
+        ], fn($val) => $val !== null && $val !== '');
 
         $clone = clone $this;
-        // Ambient acts as base defaults; contextData overrides or expands on it
         $clone->contextData = array_merge($ambient, $this->contextData);
 
         return $clone;
@@ -79,42 +82,67 @@ class MessageDeliveryAdapter
     {
         $scoped = $this->withAutoScope();
 
-        // Filter out null entries
-        $cleanContext = array_filter($scoped->contextData, fn($val) => $val !== null);
+        $cleanContext = array_filter(
+            $scoped->contextData,
+            fn($val) => $val !== null && $val !== ''
+        );
 
         return MessageDelivery::withContext($cleanContext);
     }
 
-    public function sms(): ChannelMessageBuilder
+    /*
+    |--------------------------------------------------------------------------
+    | Channel Builder Forwarding via Proxy
+    |--------------------------------------------------------------------------
+    */
+
+    public function sms(): MessageDeliveryProxy
     {
-        return $this->instance()->sms();
+        return $this->proxy($this->instance()->sms());
     }
 
-    public function email(): ChannelMessageBuilder
+    public function email(): MessageDeliveryProxy
     {
-        return $this->instance()->email();
+        return $this->proxy($this->instance()->email());
     }
 
-    public function push(): ChannelMessageBuilder
+    public function push(): MessageDeliveryProxy
     {
-        return $this->instance()->push();
+        return $this->proxy($this->instance()->push());
     }
 
-    public function whatsapp(): ChannelMessageBuilder
+    public function whatsapp(): MessageDeliveryProxy
     {
-        return $this->instance()->whatsapp();
+        return $this->proxy($this->instance()->whatsapp());
     }
 
-    public function inApp(): ChannelMessageBuilder
+    public function inApp(): MessageDeliveryProxy
     {
-        return $this->instance()->inApp();
+        return $this->proxy($this->instance()->inApp());
     }
 
-    public function channels(array $channels): MultiChannelMessageBuilder
+    public function channels(array $channels): MessageDeliveryProxy
     {
-        return $this->instance()->channels($channels);
+        return $this->proxy($this->instance()->channels($channels));
     }
 
+    /**
+     * Wrap channel builder in MessageDeliveryProxy to handle automatic view namespace resolution.
+     */
+    protected function proxy(mixed $builder): MessageDeliveryProxy
+    {
+        $scoped = $this->withAutoScope();
+
+        return new MessageDeliveryProxy(
+            builder: $builder,
+            contextResolver: $this->contextResolver,
+            contextData: $scoped->contextData
+        );
+    }
+
+    /**
+     * Proxy dynamic calls to the configured MessageDelivery instance.
+     */
     public function __call(string $method, array $parameters): mixed
     {
         return $this->instance()->{$method}(...$parameters);

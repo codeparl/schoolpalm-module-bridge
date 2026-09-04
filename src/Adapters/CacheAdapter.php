@@ -57,7 +57,7 @@ class CacheAdapter
     public function forSchool(?string $schoolId = null): static
     {
         $clone = clone $this;
-        $clone->schoolId = $schoolId ?? $this->contextResolver->schoolId();
+        $clone->schoolId = $schoolId ?? $this->contextResolver->schoolId(true);
         $clone->tenantId ??= $this->contextResolver->tenantId();
         $clone->hasExplicitContext = true;
 
@@ -85,7 +85,7 @@ class CacheAdapter
         }
 
         // Priority resolution: School -> Tenant
-        $this->schoolId = $this->contextResolver->schoolId();
+        $this->schoolId = $this->contextResolver->schoolId(true);
         $this->tenantId = $this->contextResolver->tenantId();
 
         return $this;

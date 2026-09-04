@@ -22,6 +22,7 @@ final class StorageAdapter
     {
 
 
+
         return $this->storage->forContext(
             $this->resolver->tenantId(),
             $this->resolver->schoolCode()
@@ -42,7 +43,6 @@ final class StorageAdapter
         string $path,
         mixed $contents
     ): string {
-
         return $this->storage()
             ->put($path, $contents);
     }

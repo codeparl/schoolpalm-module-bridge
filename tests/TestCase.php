@@ -245,6 +245,65 @@ class TestCase extends Orchestra
         $this->loadMigrationsFrom(
             __DIR__ . '/../vendor/schoolpalm/app-settings/database/migrations'
         );
+
+        // Create tables required for cross-channel notification tests
+        // (in-app database notifications + email delivery tracking).
+        $this->artisan('migrate')->run();
+
+        \Illuminate\Support\Facades\Schema::create(
+            'notifications',
+            function (\Illuminate\Database\Schema\Blueprint $table): void {
+                $table->uuid('id')->primary();
+
+                $table->string('notifiable_type');
+                $table->string('notifiable_id');
+                $table->index(['notifiable_type', 'notifiable_id']);
+
+                $table->string('title');
+                $table->text('body')->nullable();
+
+                $table->json('data')->nullable();
+
+                $table->string('channel')->nullable();
+                $table->string('provider')->nullable();
+
+                $table->timestamp('read_at')->nullable();
+
+                $table->timestamps();
+            }
+        );
+
+        \Illuminate\Support\Facades\Schema::create(
+            'message_deliveries',
+            function (\Illuminate\Database\Schema\Blueprint $table): void {
+                $table->uuid('id')->primary();
+
+                $table->string('tenant_id')->nullable();
+                $table->string('school_id')->nullable();
+
+                $table->string('channel');
+                $table->string('provider');
+                $table->string('recipient');
+                $table->string('status');
+
+                $table->string('provider_message_id')->nullable();
+                $table->string('subject')->nullable();
+                $table->json('metadata')->nullable();
+                $table->text('error')->nullable();
+
+                $table->datetime('queued_at')->nullable();
+                $table->datetime('sent_at')->nullable();
+                $table->datetime('delivered_at')->nullable();
+
+                $table->timestamps();
+
+                $table->index('tenant_id');
+                $table->index('school_id');
+                $table->index('channel');
+                $table->index('status');
+                $table->index('created_at');
+            }
+        );
     }
 
     protected function setUp(): void

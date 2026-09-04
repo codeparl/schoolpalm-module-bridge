@@ -1,596 +1,726 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "SchoolPalm Module Manifest",
-  "type": "object",
-  "additionalProperties": false,
-
-  "required": [
-    "name",
-    "vendor",
-    "module_key",
-    "namespace",
-    "prefix",
-    "context",
-    "root",
-    "description",
-    "sdk",
-    "version",
-    "type",
-    "menus",
-    "role",
-    "actions"
-  ],
-
-  "properties": {
-
-    "name": {
-      "type": "string",
-      "minLength": 1
-    },
-
-    "icon": {
-      "type": ["string", "null"],
-      "default": null
-    },
-
-    "vendor": {
-      "type": "string",
-      "minLength": 2,
-      "pattern": "^[a-z][a-z0-9_-]*$"
-    },
-
-    "prefix": {
-      "type": "string",
-      "minLength": 2,
-      "pattern": "^[a-z][a-z_-]*$"
-    },
-
-    "module_key": {
-      "type": "string",
-      "pattern": "^[a-z][a-z0-9_-]*(\\.[a-z][a-z0-9_-]*){2,}$"
-    },
-
-    "namespace": {
-      "type": "string",
-      "pattern": "^[A-Z][a-zA-Z0-9]*(\\\\[A-Z][a-zA-Z0-9]*)+$"
-    },
-
-    "root": {
-      "type": "string",
-      "pattern": "^[A-Za-z0-9]+(\\/[A-Za-z0-9]+)*$"
-    },
-
-    "description": {
-      "type": "string"
-    },
-
-    "sdk": {
-      "type": "object",
-      "required": ["name", "version"],
-      "additionalProperties": false,
-
-      "properties": {
-        "name": {
-          "type": "string",
-          "minLength": 1
-        },
-
-        "version": {
-          "type": "string",
-          "pattern": "^[~^<>!=]*\\d+\\.\\d+(\\.\\d+)?"
-        }
-      }
-    },
-
-    "version": {
-      "type": "string",
-      "pattern": "^\\d+\\.\\d+\\.\\d+$"
-    },
-
-    "type": {
-      "type": "string",
-      "enum": ["core", "external"]
-    },
-
-    "context": {
-      "type": "string",
-      "pattern": "^[A-Za-z0-9]+(\\.[A-Za-z0-9]+)*$"
-    },
-
-    "is_protected": {
-      "type": "boolean",
-      "default": false
-    },
-
-    "is_common": {
-      "type": "boolean",
-      "default": false
-    },
-
-    "role": {
-      "type": "string",
-      "default": "admin"
-    },
-
-    "provides": {
-      "type": "array",
-      "default": [],
-
-      "items": {
-        "type": "string",
-        "pattern": "^[A-Z][A-Za-z0-9_\\\\]+$"
-      }
-    },
-
-    "dtos": {
-      "type": "array",
-      "default": [],
-      "uniqueItems": true,
-
-      "items": {
-        "type": "string",
-        "pattern": "^[A-Z][A-Za-z0-9_]*(\\\\[A-Z][A-Za-z0-9_]*)+$"
-      }
-    },
-
-   "relations": {
-  "type": ["string", "null"],
-  "default": null,
-  "pattern": "^[A-Z][A-Za-z0-9_]*(\\\\[A-Z][A-Za-z0-9_]*)+$",
-  "description": "Fully qualified relation registry class name",
-  "$error": {
-    "type": "relation must be a string or null",
-    "pattern": "relation must be a valid PHP fully-qualified class name"
-  }
-},
-
-    "requires": {
-      "type": "object",
-      "additionalProperties": false,
-
-      "properties": {
-
-        "modules": {
-          "type": "object",
-
-          "additionalProperties": {
-            "type": "string",
-            "pattern": "^[\\^~]?\\d+\\.\\d+(\\.\\d+)?$"
-          },
-
-          "default": {}
-        }
-      }
-    },
-
-    "entry": {
-      "type": "object",
-      "additionalProperties": false,
-
-      "required": ["provider"],
-
-      "properties": {
-
-        "provider": {
-          "type": "string",
-          "pattern": "^[A-Z][A-Za-z0-9_\\\\]+$"
-        }
-      }
-    },
-
-    "actionEntry": {
-      "type": "string",
-      "pattern": "^[A-Z][A-Za-z0-9_]*(\\\\[A-Z][A-Za-z0-9_]*)+$"
-    },
-
-    "events": {
-      "type": "array",
-      "default": [],
-      "uniqueItems": true,
-
-      "items": {
-        "type": "string",
-        "pattern": "^[A-Z][A-Za-z0-9_]*(\\\\[A-Z][A-Za-z0-9_]*)+$"
-      }
-    },
-
-    "dependencies": {
-      "type": "object",
-      "additionalProperties": false,
-
-      "properties": {
-
-        "backend": {
-          "type": "object",
-          "additionalProperties": false,
-
-          "properties": {
-
-            "php": {
-              "type": "string",
-              "pattern": "^[\\^~><=0-9\\.\\|\\s]+$"
-            },
-
-            "extensions": {
-              "type": "object",
-
-              "additionalProperties": {
-                "type": "string"
-              },
-
-              "default": {}
-            },
-
-            "packages": {
-              "type": "object",
-
-              "additionalProperties": {
-                "type": "string"
-              },
-
-              "default": {}
-            }
-          }
-        }
-      }
-    },
-
-   "migrations": {
-  "type": "object",
-
-  "additionalProperties": {
-
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "SchoolPalm Module Manifest",
     "type": "object",
-
-    "properties": {
-
-      "path": {
-        "type": "string"
-      },
-
-      "run_on_install": {
-        "type": "boolean",
-        "default": true
-      },
-
-      "run_on_update": {
-        "type": "boolean",
-        "default": false
-      },
-
-      "tables": {
-        "type": "array",
-        "default": [],
-
-        "items": {
-
-          "type": "object",
-          "additionalProperties": false,
-
-          "required": ["name"],
-
-          "properties": {
-
-            "name": {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_]*$"
-            },
-
-            "model": {
-              "type": "boolean",
-              "default": false
-            },
-
-            "model_name": {
-              "type": ["string", "null"],
-              "default": null,
-              "pattern": "^[A-Z][A-Za-z0-9_]*$"
-            },
-
-            "contract": {
-              "type": ["string", "null"],
-              "default": null,
-              "pattern": "^[A-Z][A-Za-z0-9_]*$"
-            },
-
-            "schema": {
-              "type": ["string", "null"],
-              "default": null
-            },
-
-            "columns": {
-              "type": "array",
-              "default": [],
-
-              "items": {
-                "type": "object",
-
-                "required": [
-                  "name",
-                  "type"
-                ],
-
-                "properties": {
-
-                  "name": {
-                    "type": "string",
-                    "pattern": "^[a-z][a-z0-9_]*$"
-                  },
-
-                  "type": {
-                    "type": "string"
-                  }
-
-                },
-
-                "additionalProperties": true
-              }
-            },
-              "updated_columns": {
-              "type": "array",
-              "default": [],
-
-              "items": {
-                "type": "object",
-
-                "required": [
-                  "name",
-                  "type"
-                ],
-
-                "properties": {
-
-                  "name": {
-                    "type": "string",
-                    "pattern": "^[a-z][a-z0-9_]*$"
-                  },
-
-                  "type": {
-                    "type": "string"
-                  }
-
-                },
-
-                "additionalProperties": true
-              }
-            },
-              "deleted_columns": {
-              "type": "array",
-              "default": [],
-
-              "items": {
-                "type": "object",
-
-                "required": [
-                  "name",
-                  "type"
-                ],
-
-                "properties": {
-
-                  "name": {
-                    "type": "string",
-                    "pattern": "^[a-z][a-z0-9_]*$"
-                  },
-
-                  "type": {
-                    "type": "string"
-                  }
-
-                },
-
-                "additionalProperties": true
-              }
-            }
-
-          }
-        }
-      }
-    }
-  }
-},
-
-    "models": {
-      "type": "object",
-
-      "required": ["path", "namespace"],
-
-      "properties": {
-
-        "path": {
-          "type": "string",
-          "default": "Models"
-        },
-
-        "namespace": {
-          "type": "string"
-        },
-
-        "autoload": {
-          "type": "boolean",
-          "default": true
-        }
-      }
-    },
-
-    "level": {
-      "type": "array",
-      "default": [],
-      "uniqueItems": true,
-
-      "items": {
-        "type": "number"
-      }
-    },
-
-    "curricula": {
-      "type": "array",
-      "default": [],
-      "uniqueItems": true,
-
-      "items": {
-        "type": "string"
-      }
-    },
-
-    "frontend": {
-      "type": "object",
-
-      "properties": {
-
-        "ui": {
-          "type": "object",
-
-          "properties": {
-
-            "js_main": {
-              "type": "string"
-            },
-
-            "css_main": {
-              "type": "boolean"
-            }
-          }
-        },
-
-        "assets": {
-          "type": "string"
-        }
-      }
-    },
-
-    "menus": {
-      "type": "array",
-      "minItems": 1,
-
-      "items": {
-        "$ref": "#/definitions/menuItem"
-      }
-    },
-
-    "actions": {
-      "type": "array",
-      "default": [],
-
-      "items": {
-        "$ref": "#/definitions/actionItem"
-      }
-    }
-  },
-
-  "allOf": [
-    {
-      "if": {
-        "properties": {
-          "is_common": {
-            "const": false
-          }
-        }
-      },
-
-      "then": {
-        "required": ["level"],
-
-        "properties": {
-          "level": {
-            "minItems": 1
-          }
-        }
-      }
-    }
-  ],
-
-  "definitions": {
-
-    "menuItem": {
-
-      "type": "object",
-      "additionalProperties": false,
-
-      "required": [
+    "additionalProperties": false,
+    "required": [
         "name",
         "label",
-        "icon",
-        "permission",
-        "route",
-        "children",
-        "description"
-      ],
-
-      "properties": {
-
+        "vendor",
+        "module_key",
+        "namespace",
+        "prefix",
+        "context",
+        "root",
+        "description",
+        "sdk",
+        "version",
+        "type",
+        "menus",
+        "role",
+        "actions"
+    ],
+    "properties": {
         "name": {
-          "type": "string",
-          "pattern": "^[A-Za-z][A-Za-z0-9_\\.]*$"
+            "type": "string",
+            "minLength": 1
         },
-
         "label": {
-          "type": "string",
-          "minLength": 1
+            "type": "string",
+            "minLength": 1,
+            "description": "Human-readable name displayed to users."
         },
-
         "icon": {
-          "type": "string"
+            "type": [
+                "string",
+                "null"
+            ],
+            "default": null
         },
-
-        "permission": {
-          "type": "string"
+        "image": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "type",
+                "path"
+            ],
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "enum": [
+                        "svg",
+                        "png",
+                        "jpg",
+                        "jpeg",
+                        "webp"
+                    ]
+                },
+                "path": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "themeable": {
+                    "type": "boolean",
+                    "default": false
+                }
+            }
         },
-
-        "route": {
-          "type": ["string", "null"]
+        "author": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "website": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                }
+            }
         },
-
+        "readme": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "path": {
+                    "type": "string"
+                }
+            }
+        },
+        "license": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "type": {
+                    "type": "string"
+                },
+                "path": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                }
+            }
+        },
+        "vendor": {
+            "type": "string",
+            "minLength": 2,
+            "pattern": "^[a-z][a-z0-9_-]*$"
+        },
+        "prefix": {
+            "type": "string",
+            "minLength": 2,
+            "pattern": "^[a-z][a-z_-]*$"
+        },
+        "module_key": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]*(\\.[a-z][a-z0-9_-]*){2,}$"
+        },
+        "namespace": {
+            "type": "string",
+            "pattern": "^[A-Z][a-zA-Z0-9]*(\\\\[A-Z][a-zA-Z0-9]*)+$"
+        },
+        "root": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9]+(\\/[A-Za-z0-9]+)*$"
+        },
         "description": {
-          "type": "string",
-          "default": ""
+            "type": "string"
         },
-
-        "children": {
-          "type": "array",
-          "default": [],
-
-          "items": {
-            "$ref": "#/definitions/menuItem"
-          }
+        "sdk": {
+            "type": "object",
+            "required": [
+                "name",
+                "version"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "version": {
+                    "type": "string",
+                    "pattern": "^[~^<>!=]*\\d+\\.\\d+(\\.\\d+)?"
+                }
+            }
+        },
+        "version": {
+            "type": "string",
+            "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        },
+        "type": {
+            "type": "string",
+            "enum": [
+                "core",
+                "external"
+            ]
+        },
+        "context": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9]+(\\.[A-Za-z0-9]+)*$"
+        },
+        "is_protected": {
+            "type": "boolean",
+            "default": false
+        },
+        "is_common": {
+            "type": "boolean",
+            "default": false
+        },
+        "role": {
+            "type": "string",
+            "default": "admin"
+        },
+        "provides": {
+            "type": "array",
+            "default": [],
+            "items": {
+                "type": "string",
+                "pattern": "^[A-Z][A-Za-z0-9_\\\\]+$"
+            }
+        },
+        "dtos": {
+            "type": "array",
+            "default": [],
+            "uniqueItems": true,
+            "items": {
+                "type": "string",
+                "pattern": "^[A-Z][A-Za-z0-9_]*(\\\\[A-Z][A-Za-z0-9_]*)+$"
+            }
+        },
+        "relations": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "default": null,
+            "pattern": "^[A-Z][A-Za-z0-9_]*(\\\\[A-Z][A-Za-z0-9_]*)+$",
+            "description": "Fully qualified relation registry class name",
+            "$error": {
+                "type": "relation must be a string or null",
+                "pattern": "relation must be a valid PHP fully-qualified class name"
+            }
+        },
+        "requires": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "modules": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string",
+                        "pattern": "^[\\^~]?\\d+\\.\\d+(\\.\\d+)?$"
+                    },
+                    "default": {}
+                }
+            }
+        },
+        "entry": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "provider"
+            ],
+            "properties": {
+                "provider": {
+                    "type": "string",
+                    "pattern": "^[A-Z][A-Za-z0-9_\\\\]+$"
+                }
+            }
+        },
+        "actionEntry": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Za-z0-9_]*(\\\\[A-Z][A-Za-z0-9_]*)+$"
+        },
+        "events": {
+            "type": "array",
+            "default": [],
+            "uniqueItems": true,
+            "items": {
+                "type": "string",
+                "pattern": "^[A-Z][A-Za-z0-9_]*(\\\\[A-Z][A-Za-z0-9_]*)+$"
+            }
+        },
+        "documents": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "types": {
+                    "type": "array",
+                    "default": [],
+                    "uniqueItems": true,
+                    "items": {
+                        "$ref": "#/definitions/documentType"
+                    }
+                }
+            }
+        },
+        "dependencies": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "backend": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "php": {
+                            "type": "string",
+                            "pattern": "^[\\^~><=0-9\\.\\|\\s]+$"
+                        },
+                        "extensions": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            },
+                            "default": {}
+                        },
+                        "packages": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            },
+                            "default": {}
+                        }
+                    }
+                }
+            }
+        },
+        "migrations": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "path": {
+                    "type": "string"
+                },
+                "run_on_install": {
+                    "type": "boolean",
+                    "default": true
+                },
+                "run_on_update": {
+                    "type": "boolean",
+                    "default": false
+                },
+                "tables": {
+                    "type": "array",
+                    "default": [],
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": true,
+                        "required": [
+                            "name"
+                        ],
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "pattern": "^[a-z][a-z0-9_]*$"
+                            },
+                            "description": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "default": null
+                            },
+                            "model": {
+                                "type": "boolean",
+                                "default": false
+                            },
+                            "model_name": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "default": null,
+                                "pattern": "^[A-Z][A-Za-z0-9_]*$"
+                            },
+                            "contract": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "default": null,
+                                "pattern": "^[A-Z][A-Za-z0-9_]*$"
+                            },
+                            "schema": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "default": null
+                            },
+                            "depends_on": {
+                                "type": "array",
+                                "default": [],
+                                "items": {
+                                    "type": "string",
+                                    "pattern": "^[a-z][a-z0-9_]*$"
+                                }
+                            },
+                            "columns": {
+                                "type": "array",
+                                "default": [],
+                                "items": {
+                                    "type": "object",
+                                    "required": [
+                                        "name",
+                                        "type"
+                                    ],
+                                    "properties": {
+                                        "name": {
+                                            "type": "string",
+                                            "pattern": "^[a-z][a-z0-9_]*$"
+                                        },
+                                        "type": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "additionalProperties": true
+                                }
+                            },
+                            "updated_columns": {
+                                "type": "array",
+                                "default": [],
+                                "items": {
+                                    "type": "object",
+                                    "required": [
+                                        "name",
+                                        "type"
+                                    ],
+                                    "properties": {
+                                        "name": {
+                                            "type": "string",
+                                            "pattern": "^[a-z][a-z0-9_]*$"
+                                        },
+                                        "type": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "additionalProperties": true
+                                }
+                            },
+                            "deleted_columns": {
+                                "type": "array",
+                                "default": [],
+                                "items": {
+                                    "type": "object",
+                                    "required": [
+                                        "name",
+                                        "type"
+                                    ],
+                                    "properties": {
+                                        "name": {
+                                            "type": "string",
+                                            "pattern": "^[a-z][a-z0-9_]*$"
+                                        },
+                                        "type": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "additionalProperties": true
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "models": {
+            "type": "object",
+            "properties": {
+                "path": {
+                    "type": "string",
+                    "default": "Models"
+                },
+                "namespace": {
+                    "type": "string"
+                },
+                "autoload": {
+                    "type": "boolean",
+                    "default": true
+                },
+                "items": {
+                    "type": "array",
+                    "default": [],
+                    "items": {
+                        "type": "object",
+                        "required": [
+                            "name",
+                            "class"
+                        ],
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "pattern": "^[a-z][a-z0-9_]*$"
+                            },
+                            "class": {
+                                "type": "string"
+                            },
+                            "relationships": {
+                                "type": "array",
+                                "default": [],
+                                "items": {
+                                    "type": "object",
+                                    "required": [
+                                        "name",
+                                        "type",
+                                        "local_key",
+                                        "foreign_key"
+                                    ],
+                                    "properties": {
+                                        "name": {
+                                            "type": "string"
+                                        },
+                                        "type": {
+                                            "type": "string",
+                                            "enum": [
+                                                "belongsTo",
+                                                "hasOne",
+                                                "hasMany",
+                                                "belongsToMany"
+                                            ]
+                                        },
+                                        "local_key": {
+                                            "type": "string"
+                                        },
+                                        "foreign_key": {
+                                            "type": "string",
+                                            "default": "id"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "level": {
+            "type": "array",
+            "default": [],
+            "uniqueItems": true,
+            "items": {
+                "type": "number"
+            }
+        },
+        "curricula": {
+            "type": "array",
+            "default": [],
+            "uniqueItems": true,
+            "items": {
+                "type": "string"
+            }
+        },
+        "frontend": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "js_main": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "css_main": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "assets": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                }
+            }
+        },
+        "menus": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+                "$ref": "#/definitions/menuItem"
+            }
+        },
+        "actions": {
+            "type": "array",
+            "default": [],
+            "items": {
+                "$ref": "#/definitions/actionItem"
+            }
         }
-      }
     },
-
-    "actionItem": {
-
-      "type": "object",
-      "additionalProperties": false,
-
-      "required": [
-        "permission",
-        "route",
-        "method",
-        "name",
-        "description"
-      ],
-
-     "properties": {
-    "name": {
-        "type": "string",
-        "pattern": "^[a-z][a-z0-9_\\.]*$"
-    },
-    "permission": {
-        "type": "string"
-    },
-    "route": {
-        "type": "string"
-    },
-    "method": {
-        "type": "string",
-        "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"],
-        "default": "GET"
-    },
-    "description": {
-        "type": "string",
-        "default": ""
+    "allOf": [
+        {
+            "if": {
+                "properties": {
+                    "is_common": {
+                        "const": false
+                    }
+                }
+            },
+            "then": {
+                "required": [
+                    "level"
+                ],
+                "properties": {
+                    "level": {
+                        "minItems": 1
+                    }
+                }
+            }
+        }
+    ],
+    "definitions": {
+        "menuItem": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "name",
+                "label",
+                "icon",
+                "permission",
+                "route",
+                "children",
+                "description"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z][A-Za-z0-9_\\.]*$"
+                },
+                "label": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "icon": {
+                    "type": "string"
+                },
+                "permission": {
+                    "type": "string"
+                },
+                "route": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "description": {
+                    "type": "string",
+                    "default": ""
+                },
+                "children": {
+                    "type": "array",
+                    "default": [],
+                    "items": {
+                        "$ref": "#/definitions/menuItem"
+                    }
+                }
+            }
+        },
+        "actionItem": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "route",
+                "permission"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9_.-]*$"
+                },
+                "permission": {
+                    "type": "string"
+                },
+                "route": {
+                    "type": "string"
+                },
+                "method": {
+                    "type": "string",
+                    "enum": [
+                        "GET",
+                        "POST",
+                        "PUT",
+                        "PATCH",
+                        "DELETE"
+                    ],
+                    "default": "GET"
+                },
+                "description": {
+                    "type": "string",
+                    "default": ""
+                }
+            }
+        },
+        "documentType": {
+            "type": "object",
+            "properties": {
+                "key": {
+                    "type": "string"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "mime": {
+                    "type": "string"
+                },
+                "permissions": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    },
+                    "properties": {
+                        "view": {
+                            "type": "string"
+                        },
+                        "download": {
+                            "type": "string"
+                        },
+                        "print": {
+                            "type": "string"
+                        },
+                        "share": {
+                            "type": "string"
+                        },
+                        "edit": {
+                            "type": "string"
+                        },
+                        "delete": {
+                            "type": "string"
+                        },
+                        "export": {
+                            "type": "string"
+                        },
+                        "archive": {
+                            "type": "string"
+                        },
+                        "annotate": {
+                            "type": "string"
+                        },
+                        "sign": {
+                            "type": "string"
+                        },
+                        "copy": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "required": [
+                "key",
+                "label",
+                "mime",
+                "permissions"
+            ]
+        }
     }
-}
-    }
-  }
 }

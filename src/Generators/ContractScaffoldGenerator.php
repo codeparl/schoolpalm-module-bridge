@@ -15,7 +15,7 @@ class ContractScaffoldGenerator
     private StubBuilder $stubBuilder;
     private ?ModuleManifest $manifest = null;
     private string $manifestPath;
-    
+
     /**
      * Holds fully qualified class names discovered dynamically via Reflection
      * to be added as `use` statements at the top of the file.
@@ -41,6 +41,7 @@ class ContractScaffoldGenerator
         }
 
         $reflection = new \ReflectionClass($contractInterface);
+
 
         if (!$reflection->isInterface()) {
             return;
@@ -94,7 +95,9 @@ class ContractScaffoldGenerator
         | GENERATE VALIDATOR & HOOK CLASS (ONLY FOR INTERNAL PROFILES)
         |--------------------------------------------------------------------------
         */
+
         if ($profile->type === 'internal') {
+
             $this->generateValidatorClass($entityName, $dtoClass, $validatorClass, $outputPath);
             $this->generateHookClass($entityName, $hookClass, $validatorClass, $outputPath);
         }
@@ -119,7 +122,7 @@ class ContractScaffoldGenerator
 
             $generatedEvents = $eventGenerator->generate();
             $eventImports = $eventGenerator->getEventImports();
-            
+
             // Ensure all event classes are queued for importing using the entity sub-namespace
             foreach ($generatedEvents as $event) {
                 if (isset($event['class'])) {
@@ -164,23 +167,23 @@ class ContractScaffoldGenerator
 
                 $generatedMethods .=
                     $this->stubBuilder
-                        ->buildMethodStubWithFactory(
-                            $method,
-                            $dtoClass,
-                            $dataFactoryClass,
-                            $profile
-                        );
+                    ->buildMethodStubWithFactory(
+                        $method,
+                        $dtoClass,
+                        $dataFactoryClass,
+                        $profile
+                    );
 
                 continue;
             }
 
             $generatedMethods .=
                 $this->stubBuilder
-                    ->buildMethodStub(
-                        $method,
-                        $dtoClass,
-                        $profile
-                    );
+                ->buildMethodStub(
+                    $method,
+                    $dtoClass,
+                    $profile
+                );
         }
 
         /*
@@ -293,15 +296,15 @@ class ContractScaffoldGenerator
 
             $factoryProperty =
                 $this->stubBuilder
-                    ->buildFactoryProperty(
-                        $dataFactoryClass
-                    );
+                ->buildFactoryProperty(
+                    $dataFactoryClass
+                );
 
             $factoryConstructor =
                 $this->stubBuilder
-                    ->buildFactoryConstructor(
-                        $dataFactoryClass
-                    );
+                ->buildFactoryConstructor(
+                    $dataFactoryClass
+                );
         }
 
         /*
@@ -345,8 +348,8 @@ class ContractScaffoldGenerator
 
         $shouldEnforceContext =
             $isInternal
-                ? 'true'
-                : 'false';
+            ? 'true'
+            : 'false';
 
         $base_namespace = $namespace . '\Core\BaseService';
         $namespace = $isInternal
@@ -422,8 +425,8 @@ class ContractScaffoldGenerator
                 !str_contains(
                     $updatedCode,
                     'protected ' .
-                    class_basename($dataFactoryClass) .
-                    ' $factory;'
+                        class_basename($dataFactoryClass) .
+                        ' $factory;'
                 )
             ) {
 
@@ -510,6 +513,52 @@ class ContractScaffoldGenerator
         }
     }
 
+
+    protected function updateGeneratedRules(
+        string $validatorPath,
+        string $rulesCode,
+        string $messagesCode,
+        string $useCode
+    ): void {
+        $content = File::exists($validatorPath)
+            ? File::get($validatorPath)
+            : null;
+
+        if (!$content) {
+            return;
+        }
+
+        $content = preg_replace(
+            '/(\/\/ <generated-rules>).*?(\/\/ <\/generated-rules>)/s',
+            "$1\n{$rulesCode}\n            $2",
+            $content
+        );
+
+        $content = preg_replace(
+            '/(\/\/ <generated-messages>).*?(\/\/ <\/generated-messages>)/s',
+            "$1\n{$messagesCode}\n        $2",
+            $content
+        );
+
+        if ($useCode !== '') {
+            if (!str_contains($content, $useCode)) {
+                $content = preg_replace(
+                    '/(<\?php\n\nnamespace [^;]+;\n)/',
+                    "$1\n{$useCode}\n",
+                    $content,
+                    1
+                );
+            }
+        } else {
+            $content = str_replace(
+                "use Illuminate\\Validation\\Rule;\n",
+                '',
+                $content
+            );
+        }
+
+        File::put($validatorPath, $content);
+    }
     /*
     |--------------------------------------------------------------------------
     | PASSTHROUGH METHOD GENERATION
@@ -529,7 +578,7 @@ class ContractScaffoldGenerator
             if ($typeString !== '') {
                 $typeString .= ' ';
             }
-            
+
             $default = '';
             if ($param->isDefaultValueAvailable()) {
                 $defaultValue = $param->getDefaultValue();
@@ -547,21 +596,21 @@ class ContractScaffoldGenerator
                     $default = ' = ' . var_export($defaultValue, true);
                 }
             }
-            
+
             $paramString .= $typeString . '$' . $param->getName() . $default . ', ';
             $paramNames[] = '$' . $param->getName();
         }
-        
+
         $paramString = rtrim($paramString, ', ');
         $paramNamesString = implode(', ', $paramNames);
-        
+
         $isVoid = false;
         $returnType = $method->getReturnType();
         $returnTypeString = '';
-        
+
         if ($returnType) {
             $formattedType = trim($this->formatReflectionType($returnType));
-            
+
             if ($formattedType === 'void') {
                 $isVoid = true;
             }
@@ -573,13 +622,13 @@ class ContractScaffoldGenerator
 
         $methodCode = "    public function {$methodName}({$paramString}){$returnTypeString}\n";
         $methodCode .= "    {\n";
-        
+
         if ($isVoid) {
             $methodCode .= "        \$this->engine->{$methodName}({$paramNamesString});\n";
         } else {
             $methodCode .= "        return \$this->engine->{$methodName}({$paramNamesString});\n";
         }
-        
+
         $methodCode .= "    }\n\n";
 
         return $methodCode;
@@ -588,12 +637,39 @@ class ContractScaffoldGenerator
     protected function isPassthroughMethod(string $methodName): bool
     {
         $passthrough = [
-            'exists', 'count', 'chunk', 'cursor', 'aggregate',
-            'sum', 'avg', 'min', 'max', 'pluck', 'first', 'last',
-            'find', 'findMany', 'all', 'where', 'findBy', 'findOneBy',
-            'search', 'whereIn', 'whereNotIn', 'whereBetween', 'whereLike',
-            'orderBy', 'limit', 'offset', 'paginate', 'simplePaginate',
-            'groupBy', 'having', 'with', 'get', 'raw'
+            'exists',
+            'count',
+            'chunk',
+            'cursor',
+            'aggregate',
+            'sum',
+            'avg',
+            'min',
+            'max',
+            'pluck',
+            'first',
+            'last',
+            'find',
+            'findMany',
+            'all',
+            'where',
+            'findBy',
+            'findOneBy',
+            'search',
+            'whereIn',
+            'whereNotIn',
+            'whereBetween',
+            'whereLike',
+            'orderBy',
+            'limit',
+            'offset',
+            'paginate',
+            'simplePaginate',
+            'groupBy',
+            'having',
+            'with',
+            'get',
+            'raw'
         ];
         return in_array($methodName, $passthrough);
     }
@@ -631,7 +707,7 @@ class ContractScaffoldGenerator
     protected function formatNamedType(\ReflectionNamedType $type): string
     {
         $name = ltrim($type->getName(), '\\');
-        
+
         if ($type->isBuiltin() || in_array($name, ['self', 'static', 'parent', 'mixed', 'void'])) {
             return $name;
         }
@@ -732,168 +808,581 @@ class ContractScaffoldGenerator
         return $namespace . '\\Validators\\' . $entity . 'Validator';
     }
 
+
+
     /**
-     * Reads properties out of the mapped Data DTO using dual evaluation mechanisms 
-     * (Reflection + Direct *Data.php File Parser fallback) and infers semantic rules.
+     * Generates a validator class directly from the entity database schema.
+     *
+     * The database schema is the authoritative source for structural
+     * validation rules.
      */
-    protected function generateValidatorClass(string $entity, string $dtoClass, string $validatorClass, string $servicePath): void
-    {
+    /**
+     * Generates a validator class directly from the entity database schema.
+     *
+     * The database schema is the authoritative source for structural
+     * validation rules.
+     */
+
+    protected function generateValidatorClass(
+        string $entity,
+        string $dtoClass,
+        string $validatorClass,
+        string $servicePath
+    ): void {
         $namespace = Helper::beforeLast($validatorClass, '\\');
         $className = class_basename($validatorClass);
-        $validatorPath = $this->getValidatorPath($validatorClass, $servicePath);
 
-        if (File::exists($validatorPath)) {
-            return;
+        $validatorPath = $this->getValidatorPath(
+            $validatorClass,
+            $servicePath
+        );
+
+        File::ensureDirectoryExists(dirname($validatorPath));
+
+        /*
+     * ---------------------------------------------------------
+     * Resolve schema
+     * ---------------------------------------------------------
+     */
+
+        $schemaPath = $this->getEntitySchemaPath(
+            $entity,
+            $servicePath
+        );
+
+        $schema = $schemaPath && File::exists($schemaPath)
+            ? Helper::loadJson($schemaPath)
+            : [];
+
+        if (!is_array($schema)) {
+            $schema = [];
         }
 
-        $extractedProperties = [];
+        $table = $schema['table'] ?? null;
+        $columns = $schema['columns'] ?? [];
+        $indexes = $schema['indexes'] ?? [];
 
-        // 1. Evaluate via Runtime Reflection Engine if loaded
-        if (class_exists($dtoClass)) {
-            $reflection = new \ReflectionClass($dtoClass);
-            foreach ($reflection->getProperties() as $prop) {
-                if ($prop->isStatic()) {
-                    continue;
-                }
-                $typeStr = '';
-                if ($propType = $prop->getType()) {
-                    if ($propType instanceof \ReflectionNamedType) {
-                        $typeStr = ($propType->allowsNull() ? '?' : '') . $propType->getName();
-                    } elseif ($propType instanceof \ReflectionUnionType) {
-                        $types = array_map(fn($t) => $t->getName(), $propType->getTypes());
-                        $typeStr = implode('|', $types);
-                    }
-                }
-                $extractedProperties[$prop->getName()] = $typeStr;
-            }
-        } else {
-            // 2. Deterministic File Fallback Engine targeting standard {$entity}Data.php files
-            $dtoFolder = $this->getModuleBasePath($servicePath) . DIRECTORY_SEPARATOR . 'DTOs';
-            $expectedDtoPath = $dtoFolder . DIRECTORY_SEPARATOR . $entity . 'Data.php';
-            
-            // Fallback check using the base resolved name if directory maps differ
-            if (!File::exists($expectedDtoPath)) {
-                $expectedDtoPath = $this->getDtoPath($dtoClass, $servicePath);
+        /*
+     * ---------------------------------------------------------
+     * Extract unique indexes
+     * ---------------------------------------------------------
+     */
+
+        $uniqueConstraints = [];
+
+        foreach ($indexes as $index) {
+            if (!($index['unique'] ?? false)) {
+                continue;
             }
 
-            if (File::exists($expectedDtoPath)) {
-                $content = File::get($expectedDtoPath);
-                
-                // Clean comments out to isolate authentic variable assignments
-                $cleanContent = preg_replace('!/\*.*?\*/!s', '', $content);
-                $cleanContent = preg_replace('!//.*!', '', $cleanContent);
-                
-                // Matches standard typed properties and constructor promoted properties
-                preg_match_all('/(?:public|protected|private)\s+(?:readonly\s+)?([\w\|\\\\?]+)?\s*\$(\w+)/', $cleanContent, $matches, PREG_SET_ORDER);
-                foreach ($matches as $match) {
-                    $propType = !empty($match[1]) ? trim($match[1]) : 'mixed';
-                    $propName = $match[2];
-                    $extractedProperties[$propName] = $propType;
-                }
+            $indexColumns = array_values(
+                array_filter(
+                    $index['columns'] ?? [],
+                    fn($column) =>
+                    is_string($column) && $column !== ''
+                )
+            );
+
+            if (empty($indexColumns)) {
+                continue;
             }
+
+            $hasSchoolId = in_array(
+                'school_id',
+                $indexColumns,
+                true
+            );
+
+            $dataColumns = array_values(
+                array_filter(
+                    $indexColumns,
+                    fn($column) => $column !== 'school_id'
+                )
+            );
+
+            if (empty($dataColumns)) {
+                continue;
+            }
+
+            $uniqueConstraints[] = [
+                'columns' => $dataColumns,
+                'school_scoped' => $hasSchoolId,
+            ];
         }
+
+        /*
+     * ---------------------------------------------------------
+     * Generate rules
+     * ---------------------------------------------------------
+     */
 
         $rulesLines = [];
         $messagesLines = [];
+        $uniqueFields = [];
 
-        if (!empty($extractedProperties)) {
-            foreach ($extractedProperties as $name => $type) {
-                // IDs are handled autonomously by the database engine sequence layer
-                if ($name === 'id') {
+        foreach ($uniqueConstraints as $constraint) {
+            foreach ($constraint['columns'] as $column) {
+                $uniqueFields[$column] = true;
+            }
+        }
+
+        foreach ($columns as $column) {
+            $name = $column['name'] ?? null;
+
+            if (!$name) {
+                continue;
+            }
+
+            /*
+         * Database-managed fields.
+         */
+            if (
+                ($column['primary'] ?? false) ||
+                ($column['autoincrement'] ?? false) ||
+                $name === 'id' ||
+                $name === 'school_id'
+            ) {
+                continue;
+            }
+
+            $type = strtolower(
+                (string) ($column['type'] ?? 'string')
+            );
+
+            $length = $column['length'] ?? null;
+            $nullable = (bool) ($column['nullable'] ?? false);
+            $default = $column['default'] ?? null;
+
+            $rules = [];
+
+            /*
+         * Required / nullable / default
+         */
+
+            if ($nullable) {
+                $rules[] = 'nullable';
+            } elseif ($default !== null) {
+                $rules[] = 'sometimes';
+            } else {
+                $rules[] = 'required';
+            }
+
+            /*
+         * Type
+         */
+
+            $typeRule = $this->getValidatorTypeRule($type);
+
+            if ($typeRule !== null) {
+                $rules[] = $typeRule;
+            }
+
+            /*
+         * String length
+         */
+
+            if (
+                $length !== null &&
+                is_numeric($length) &&
+                $this->isStringSchemaType($type)
+            ) {
+                $rules[] = 'max:' . (int) $length;
+            }
+
+            /*
+         * Unique rules
+         */
+
+            foreach ($uniqueConstraints as $constraint) {
+                $constraintColumns = $constraint['columns'];
+
+                if (!in_array($name, $constraintColumns, true)) {
                     continue;
                 }
 
-                $rules = [];
-                $isNullable = str_contains($type, '?') || str_contains(strtolower($type), 'null');
-                $rules[] = $isNullable ? 'nullable' : 'required';
+                /*
+             * Composite constraints are generated once,
+             * against their first data column.
+             */
+                if ($constraintColumns[0] !== $name) {
+                    continue;
+                }
 
-                $cleanType = str_replace('?', '', $type);
-                $typeRule = match(true) {
-                    str_contains($cleanType, 'int') => 'integer',
-                    str_contains($cleanType, 'float') || str_contains($cleanType, 'double') => 'numeric',
-                    str_contains($cleanType, 'bool') => 'boolean',
-                    str_contains($cleanType, 'array') => 'array',
-                    default => 'string',
-                };
-                $rules[] = $typeRule;
+                /*
+             * A schema without a table cannot generate
+             * a database unique rule.
+             */
+                if (!$table) {
+                    continue;
+                }
 
-                // Semantic Context Engine mapping rules directly against naming taxonomy
-                $lowerName = strtolower($name);
-                $readableName = str_replace('_', ' ', $name);
+                $ruleExpr =
+                    "Rule::unique('{$table}')";
 
-                if (str_contains($lowerName, 'email')) {
-                    $rules[] = 'email';
-                    $rules[] = 'max:255';
-                } elseif (str_contains($lowerName, 'password')) {
-                    $rules[] = 'min:8';
-                } elseif (str_contains($lowerName, 'url')) {
-                    $rules[] = 'url';
-                } elseif (str_contains($lowerName, 'uuid')) {
-                    $rules[] = 'uuid';
-                } elseif (preg_match('/_(at|date)$/', $lowerName) || $lowerName === 'date') {
-                    $rules[] = 'date';
-                } elseif (str_ends_with($lowerName, '_id')) {
-                    if (!in_array('integer', $rules)) {
-                        $rules[] = 'integer';
+                if ($constraint['school_scoped']) {
+                    $ruleExpr .=
+                        "->where('school_id', \$schoolId)";
+                }
+
+                foreach ($constraintColumns as $constraintColumn) {
+                    if ($constraintColumn === $name) {
+                        continue;
                     }
-                } elseif (in_array($lowerName, ['first_name', 'last_name', 'name', 'title', 'subject'])) {
-                    $rules[] = 'max:255';
+
+                    $ruleExpr .=
+                        "->where('{$constraintColumn}', "
+                        . "\$data['{$constraintColumn}'] ?? null)";
                 }
 
-                $rulesString = implode('|', array_unique($rules));
-                $rulesLines[] = "            '{$name}' => '{$rulesString}',";
+                $ruleExpr .=
+                    "->when(\$isUpdate && \$ignoreId !== null, "
+                    . "fn (\$rule) => \$rule->ignore(\$ignoreId))";
 
-                // Map human-readable validation error messaging parameters
-                if (!$isNullable) {
-                    $messagesLines[] = "            '{$name}.required' => 'The {$readableName} field is required.',";
+                $rules[] = $ruleExpr;
+            }
+
+            /*
+         * Separate scalar rules from PHP expressions.
+         */
+
+            $scalarRules = [];
+            $ruleExpressions = [];
+
+            foreach ($rules as $rule) {
+                if (
+                    is_string($rule) &&
+                    !str_starts_with($rule, 'Rule::')
+                ) {
+                    $scalarRules[] = $rule;
+                } else {
+                    $ruleExpressions[] = $rule;
                 }
-                $messagesLines[] = "            '{$name}.{$typeRule}' => 'The {$readableName} must be a valid {$typeRule}.',";
-                
-                if (in_array('email', $rules)) {
-                    $messagesLines[] = "            '{$name}.email' => 'The {$readableName} must be a valid email address.',";
+            }
+
+            $scalarRules = array_values(
+                array_unique($scalarRules)
+            );
+
+            $rules = array_merge(
+                $scalarRules,
+                $ruleExpressions
+            );
+
+            /*
+         * PHP array syntax.
+         */
+
+            $ruleCodeParts = [];
+
+            foreach ($rules as $rule) {
+                if (
+                    is_string($rule) &&
+                    str_starts_with($rule, 'Rule::')
+                ) {
+                    $ruleCodeParts[] = $rule;
+                } else {
+                    $ruleCodeParts[] =
+                        "'" . addslashes($rule) . "'";
                 }
-                if (in_array('min:8', $rules)) {
-                    $messagesLines[] = "            '{$name}.min' => 'The {$readableName} must be at least 8 characters.',";
+            }
+
+            $rulesCodeForField =
+                '[' . implode(', ', $ruleCodeParts) . ']';
+
+            $rulesLines[] =
+                "            '{$name}' => {$rulesCodeForField},";
+
+            /*
+         * -----------------------------------------------------
+         * Messages
+         * -----------------------------------------------------
+         */
+
+            $readableName = str_replace('_', ' ', $name);
+
+            if (in_array('required', $scalarRules, true)) {
+                $messagesLines[] =
+                    "            '{$name}.required' => "
+                    . "'The {$readableName} field is required.',";
+            }
+
+            if (in_array('string', $scalarRules, true)) {
+                $messagesLines[] =
+                    "            '{$name}.string' => "
+                    . "'The {$readableName} must be a string.',";
+            }
+
+            if (in_array('integer', $scalarRules, true)) {
+                $messagesLines[] =
+                    "            '{$name}.integer' => "
+                    . "'The {$readableName} must be an integer.',";
+            }
+
+            if (in_array('numeric', $scalarRules, true)) {
+                $messagesLines[] =
+                    "            '{$name}.numeric' => "
+                    . "'The {$readableName} must be numeric.',";
+            }
+
+            if (in_array('boolean', $scalarRules, true)) {
+                $messagesLines[] =
+                    "            '{$name}.boolean' => "
+                    . "'The {$readableName} must be true or false.',";
+            }
+
+            if (in_array('array', $scalarRules, true)) {
+                $messagesLines[] =
+                    "            '{$name}.array' => "
+                    . "'The {$readableName} must be an array.',";
+            }
+
+            if (in_array('date', $scalarRules, true)) {
+                $messagesLines[] =
+                    "            '{$name}.date' => "
+                    . "'The {$readableName} must be a valid date.',";
+            }
+
+            if (in_array('email', $scalarRules, true)) {
+                $messagesLines[] =
+                    "            '{$name}.email' => "
+                    . "'The {$readableName} must be a valid email address.',";
+            }
+
+            foreach ($scalarRules as $rule) {
+                if (
+                    is_string($rule) &&
+                    preg_match('/^max:(\d+)$/', $rule, $maxMatch)
+                ) {
+                    $messagesLines[] =
+                        "            '{$name}.max' => "
+                        . "'The {$readableName} may not be greater than "
+                        . "{$maxMatch[1]} characters.',";
+
+                    break;
                 }
-                if (preg_match('/max:(\d+)/', $rulesString, $maxMatch)) {
-                    $messagesLines[] = "            '{$name}.max' => 'The {$readableName} may not be greater than {$maxMatch[1]} characters.',";
-                }
+            }
+
+            if (isset($uniqueFields[$name])) {
+                $messagesLines[] =
+                    "            '{$name}.unique' => "
+                    . "'The {$readableName} has already been taken.',";
             }
         }
 
         if (empty($rulesLines)) {
-            $rulesLines[] = "            // Contextual properties map empty. Define custom requirements here.";
+            $rulesLines[] =
+                "            // No client-validatable columns found.";
         }
 
         $rulesCode = implode("\n", $rulesLines);
+
+        if (empty($messagesLines)) {
+            $messagesLines[] =
+                "            // No generated validation messages.";
+        }
+
         $messagesCode = implode("\n", $messagesLines);
 
-        $stub = "<?php\n\n";
-        $stub .= "namespace {$namespace};\n\n";
-        $stub .= "use Illuminate\Support\Facades\Validator;\n\n";
-        $stub .= "class {$className}\n";
-        $stub .= "{\n";
-        $stub .= "    public static function validate(array \$data, bool \$isUpdate = false): array\n";
-        $stub .= "    {\n";
-        $stub .= "        \$rules = [\n";
-        $stub .= $rulesCode . "\n";
-        $stub .= "        ];\n\n";
-        $stub .= "        if (\$isUpdate) {\n";
-        $stub .= "            foreach (\$rules as \$field => \$rule) {\n";
-        $stub .= "                if (is_string(\$rule)) {\n";
-        $stub .= "                    \$rules[\$field] = str_replace('required', 'sometimes', \$rule);\n";
-        $stub .= "                }\n";
-        $stub .= "            }\n";
-        $stub .= "        }\n\n";
-        $stub .= "        \$messages = [\n";
-        $stub .= (!empty($messagesCode) ? $messagesCode . "\n" : "") . "        ];\n\n";
-        $stub .= "        return Validator::make(\$data, \$rules, \$messages)->validate();\n";
-        $stub .= "    }\n";
-        $stub .= "}\n";
+        /*
+     * ---------------------------------------------------------
+     * Generated imports
+     * ---------------------------------------------------------
+     */
 
-        File::ensureDirectoryExists(dirname($validatorPath));
-        File::put($validatorPath, $stub);
+        $importsCode = '';
+
+        if (!empty($uniqueConstraints) && $table) {
+            $importsCode = "use Illuminate\\Validation\\Rule;";
+        }
+
+        /*
+     * ---------------------------------------------------------
+     * Create validator for the first time
+     * ---------------------------------------------------------
+     */
+
+        if (!File::exists($validatorPath)) {
+            $stub = "<?php\n\n";
+            $stub .= "namespace {$namespace};\n\n";
+
+            if ($importsCode !== '') {
+                $stub .= $importsCode . "\n";
+            }
+
+            $stub .= "use Illuminate\\Support\\Facades\\Validator;\n\n";
+
+            $stub .= "class {$className}\n";
+            $stub .= "{\n";
+
+            $stub .= "    public static function validate(\n";
+            $stub .= "        array \$data,\n";
+            $stub .= "        bool \$isUpdate = false,\n";
+            $stub .= "        int|string|null \$ignoreId = null,\n";
+            $stub .= "        int|string|null \$schoolId = null\n";
+            $stub .= "    ): array {\n";
+
+            $stub .= "        \$rules = [\n";
+            $stub .= "            // <generated-rules>\n";
+            $stub .= $rulesCode . "\n";
+            $stub .= "            // </generated-rules>\n\n";
+            $stub .= "            // Developer-owned rules go here.\n";
+            $stub .= "        ];\n\n";
+
+            $stub .= "        if (\$isUpdate) {\n";
+            $stub .= "            foreach (\$rules as \$field => \$ruleList) {\n";
+            $stub .= "                if (!is_array(\$ruleList)) {\n";
+            $stub .= "                    continue;\n";
+            $stub .= "                }\n\n";
+            $stub .= "                foreach (\$ruleList as \$i => \$rule) {\n";
+            $stub .= "                    if (\$rule === 'required') {\n";
+            $stub .= "                        \$rules[\$field][\$i] = 'sometimes';\n";
+            $stub .= "                    }\n";
+            $stub .= "                }\n";
+            $stub .= "            }\n";
+            $stub .= "        }\n\n";
+
+            $stub .= "        \$messages = [\n";
+            $stub .= "            // <generated-messages>\n";
+            $stub .= $messagesCode . "\n";
+            $stub .= "            // </generated-messages>\n\n";
+            $stub .= "            // Developer-owned messages go here.\n";
+            $stub .= "        ];\n\n";
+
+            $stub .= "        return Validator::make(\n";
+            $stub .= "            \$data,\n";
+            $stub .= "            \$rules,\n";
+            $stub .= "            \$messages\n";
+            $stub .= "        )->validate();\n";
+
+            $stub .= "    }\n";
+            $stub .= "}\n";
+
+            File::put($validatorPath, $stub);
+
+            return;
+        }
+
+        /*
+     * ---------------------------------------------------------
+     * Update existing validator
+     * ---------------------------------------------------------
+     */
+
+        $content = File::get($validatorPath);
+
+        /*
+     * Update generated rules only.
+     */
+
+        $content = preg_replace(
+            '/(\s*\/\/ <generated-rules>).*?(\s*\/\/ <\/generated-rules>)/s',
+            "\n            // <generated-rules>\n"
+                . $rulesCode
+                . "\n            // </generated-rules>",
+            $content,
+            1
+        );
+
+        /*
+     * Update generated messages only.
+     */
+
+        $content = preg_replace(
+            '/(\s*\/\/ <generated-messages>).*?(\s*\/\/ <\/generated-messages>)/s',
+            "\n            // <generated-messages>\n"
+                . $messagesCode
+                . "\n            // </generated-messages>",
+            $content,
+            1
+        );
+
+        /*
+     * Update generated Rule import.
+     */
+
+        $ruleImport = "use Illuminate\\Validation\\Rule;";
+
+        if ($importsCode !== '') {
+            if (!str_contains($content, $ruleImport)) {
+                $content = preg_replace(
+                    '/(namespace\s+[^;]+;\s*)/s',
+                    "$1\n{$ruleImport}",
+                    $content,
+                    1
+                );
+            }
+        } else {
+            $content = preg_replace(
+                '/\n?use Illuminate\\\\Validation\\\\Rule;\n/',
+                "\n",
+                $content,
+                1
+            );
+        }
+
+        File::put($validatorPath, $content);
     }
+
+
+
+
+    /**
+     * Resolve the database schema for an entity.
+     *
+     * Schema files are migration-based, for example:
+     *
+     * Database/migrations/schemas/
+     * └── 2026_08_30_150841_create_schoolpalm_common_student_forms_table.json
+     *
+     * The entity is "Forms", while the actual table is:
+     *
+     * schoolpalm_common_student_forms
+     */
+    protected function getEntitySchemaPath(
+        string $entity,
+        string $servicePath
+    ): ?string {
+        $schemaDirectory =
+            $this->getModuleBasePath($servicePath)
+            . DIRECTORY_SEPARATOR
+            . 'Database'
+            . DIRECTORY_SEPARATOR
+            . 'migrations'
+            . DIRECTORY_SEPARATOR
+            . 'schemas';
+
+        if (!$this->manifest || !File::isDirectory($schemaDirectory)) {
+            return null;
+        }
+
+        $namespace = Str::before(
+            $this->manifest->info()->namespace(),
+            '\\Backend'
+        );
+
+        $modulePrefix =
+            str_replace('\\', '_', trim($namespace, '\\'));
+
+        $expectedTable = strtolower($modulePrefix . '_' . $entity);
+
+
+        foreach (File::files($schemaDirectory) as $file) {
+            if (strtolower($file->getExtension()) !== 'json') {
+                continue;
+            }
+
+            $schema = Helper::loadJson($file->getPathname());
+
+            if (
+                $schema['table'] === $expectedTable
+            ) {
+                return $file->getPathname();
+            }
+        }
+
+        return null;
+    }
+
 
     protected function generateHookClass(string $entity, string $hookClass, string $validatorClass, string $servicePath): void
     {
@@ -909,7 +1398,7 @@ class ContractScaffoldGenerator
         // Apply Laravel's pluralization engine to correctly map the plural entity domain subfolder
         $pluralEntity = Str::plural($entity);
         $eventNamespace = $this->resolveEventNamespace($hookClass) . '\\' . $pluralEntity;
-        
+
         $stub = "<?php\n\n";
         $stub .= "namespace {$namespace};\n\n";
         $stub .= "use {$validatorClass};\n";
@@ -997,6 +1486,63 @@ class ContractScaffoldGenerator
         return $namespace . '\\' . $entity;
     }
 
+
+    protected function getValidatorTypeRule(string $type): ?string
+    {
+        return match (strtolower($type)) {
+            'string',
+            'char',
+            'varchar',
+            'text',
+            'tinytext',
+            'mediumtext',
+            'longtext' => 'string',
+
+            'integer',
+            'bigint',
+            'biginteger',
+            'mediumint',
+            'smallint',
+            'tinyint' => 'integer',
+
+            'decimal',
+            'numeric',
+            'float',
+            'double',
+            'real' => 'numeric',
+
+            'boolean',
+            'bool' => 'boolean',
+
+            'date',
+            'datetime',
+            'timestamp',
+            'datetimetz',
+            'timestampz' => 'date',
+
+            'json',
+            'jsonb' => 'array',
+
+            'uuid',
+            'ulid' => 'string',
+
+            default => null,
+        };
+    }
+
+    protected function isStringSchemaType(string $type): bool
+    {
+        return in_array(strtolower($type), [
+            'string',
+            'char',
+            'varchar',
+            'text',
+            'tinytext',
+            'mediumtext',
+            'longtext',
+        ], true);
+    }
+
     protected function resolveDataFactoryFromContract(string $contract): string
     {
         $class = Helper::afterLast($contract, '\\');
@@ -1024,7 +1570,7 @@ class ContractScaffoldGenerator
         $allImports = array_unique(array_merge($existingImports, $newImports));
         $allImports = array_filter($allImports, fn($i) => !empty(trim($i)));
         sort($allImports);
-        
+
         $useBlock = implode("\n", array_map(fn($i) => "use {$i};", $allImports));
         $codeWithoutUses = preg_replace('/^use\s+[^;]+;\n/m', '', $existingCode);
         return preg_replace('/namespace\s+[^;]+;/', "$0\n\n{$useBlock}", $codeWithoutUses, 1);

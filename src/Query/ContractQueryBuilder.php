@@ -353,7 +353,6 @@ class ContractQueryBuilder
         if ($condition) {
 
             $callback($this, $condition);
-
         } elseif ($default) {
 
             $default($this, $condition);
@@ -396,29 +395,56 @@ class ContractQueryBuilder
 
     public function get(): array
     {
-        $items = $this->service
-            ->querySearch($this->filters);
+        $localRelations = [];
+        $globalRelations = [];
+
+        foreach ($this->relations as $relation) {
+            if (str_contains($relation, '@')) {
+                $globalRelations[] = $relation;
+            } else {
+                $localRelations[] = $relation;
+            }
+        }
+
+        /*
+     * Local relations are loaded by the underlying query engine/Eloquent.
+     *
+     * Global relations are loaded later by RelationEngine because they
+     * resolve through module contracts.
+     */
+        $items = $this->service->querySearchWithRelations(
+            $this->filters,
+            $localRelations
+        );
+
         $items = $this->applyWheres($items);
-
-
         $items = $this->applySelects($items);
-
         $items = $this->applySorting($items);
-
         $items = $this->applyLimitOffset($items);
 
-        if (!empty($this->relations)) {
-
-            $items = $this->relationEngine
-                ->load(
-                    $items,
-                    $this->relations
-                );
+        /*
+     * Only scoped relations reach RelationEngine.
+     *
+     * Example:
+     * contact@schoolpalm.common.contact
+     */
+        if (!empty($globalRelations)) {
+            $items = $this->relationEngine->load(
+                $items,
+                $globalRelations
+            );
         }
 
         return $items;
     }
 
+    /**
+     * Alias for get().
+     */
+    public function all(): array
+    {
+        return $this->get();
+    }
     public function first(): mixed
     {
         return $this
@@ -621,7 +647,6 @@ class ContractQueryBuilder
 
                     $result[$field] =
                         $item[$field] ?? null;
-
                 } else {
 
                     $result[$field] =
@@ -630,119 +655,118 @@ class ContractQueryBuilder
             }
 
             return $result;
-
         }, $items);
     }
 
     protected function applyWheres(
-    array $items
-): array {
+        array $items
+    ): array {
 
-    if (empty($this->filters)) {
-        return array_values($items);
-    }
-
-    return array_values(array_filter(
-        $items,
-        function ($item) {
-
-            $passed = true;
-
-            foreach ($this->filters as $filter) {
-
-                $type = $filter['type'];
-
-                $field = $filter['field'];
-
-                $value = is_array($item)
-                    ? ($item[$field] ?? null)
-                    : ($item->{$field} ?? null);
-
-                switch ($type) {
-
-                    case 'where':
-
-                        if ($value != $filter['value']) {
-                            return false;
-                        }
-
-                        break;
-
-                    case 'whereIn':
-
-                        if (
-                            !in_array(
-                                $value,
-                                $filter['values']
-                            )
-                        ) {
-                            return false;
-                        }
-
-                        break;
-
-                    case 'whereNotIn':
-
-                        if (
-                            in_array(
-                                $value,
-                                $filter['values']
-                            )
-                        ) {
-                            return false;
-                        }
-
-                        break;
-
-                    case 'whereNull':
-
-                        if ($value !== null) {
-                            return false;
-                        }
-
-                        break;
-
-                    case 'whereNotNull':
-
-                        if ($value === null) {
-                            return false;
-                        }
-
-                        break;
-
-                    case 'whereLike':
-
-                        if (
-                            stripos(
-                                (string) $value,
-                                $filter['value']
-                            ) === false
-                        ) {
-                            return false;
-                        }
-
-                        break;
-
-                    case 'whereBetween':
-
-                        $min = $filter['range'][0] ?? null;
-                        $max = $filter['range'][1] ?? null;
-
-                        if (
-                            $value < $min
-                            || $value > $max
-                        ) {
-                            return false;
-                        }
-
-                        break;
-                }
-            }
-
-            return $passed;
+        if (empty($this->filters)) {
+            return array_values($items);
         }
-    ));
-}
+
+        return array_values(array_filter(
+            $items,
+            function ($item) {
+
+                $passed = true;
+
+                foreach ($this->filters as $filter) {
+
+                    $type = $filter['type'];
+
+                    $field = $filter['field'];
+
+                    $value = is_array($item)
+                        ? ($item[$field] ?? null)
+                        : ($item->{$field} ?? null);
+
+                    switch ($type) {
+
+                        case 'where':
+
+                            if ($value != $filter['value']) {
+                                return false;
+                            }
+
+                            break;
+
+                        case 'whereIn':
+
+                            if (
+                                !in_array(
+                                    $value,
+                                    $filter['values']
+                                )
+                            ) {
+                                return false;
+                            }
+
+                            break;
+
+                        case 'whereNotIn':
+
+                            if (
+                                in_array(
+                                    $value,
+                                    $filter['values']
+                                )
+                            ) {
+                                return false;
+                            }
+
+                            break;
+
+                        case 'whereNull':
+
+                            if ($value !== null) {
+                                return false;
+                            }
+
+                            break;
+
+                        case 'whereNotNull':
+
+                            if ($value === null) {
+                                return false;
+                            }
+
+                            break;
+
+                        case 'whereLike':
+
+                            if (
+                                stripos(
+                                    (string) $value,
+                                    $filter['value']
+                                ) === false
+                            ) {
+                                return false;
+                            }
+
+                            break;
+
+                        case 'whereBetween':
+
+                            $min = $filter['range'][0] ?? null;
+                            $max = $filter['range'][1] ?? null;
+
+                            if (
+                                $value < $min
+                                || $value > $max
+                            ) {
+                                return false;
+                            }
+
+                            break;
+                    }
+                }
+
+                return $passed;
+            }
+        ));
+    }
 
     protected function flatten(
         array $items
@@ -763,7 +787,6 @@ class ContractQueryBuilder
                 $carry[] = $item;
 
                 return $carry;
-
             },
             []
         );

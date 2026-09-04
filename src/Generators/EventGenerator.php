@@ -3,11 +3,13 @@
 namespace SchoolPalm\ModuleBridge\Generators;
 
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Str;
+use ReflectionClass;
 use SchoolPalm\ModuleBridge\Manifest\ManifestFactory;
 use SchoolPalm\ModuleBridge\Manifest\ModuleManifest;
 use SchoolPalm\ModuleBridge\Profiles\ContractProfile;
 use SchoolPalm\ModuleBridge\Support\Helper;
-use Illuminate\Support\Str;
+
 /**
  * EventGenerator - Generates event classes for core contracts.
  * Events are generated ONCE per contract and available to ALL services.
@@ -72,13 +74,90 @@ class EventGenerator
         $this->manifest = $manifest;
         $this->manifestPath = $manifestPath;
         $this->profile = $profile;
-        
+
         // Get module info from manifest
         $this->moduleNamespace = $manifest->info()->namespace();
         $this->entity = $this->resolveEntity($contractInterface);
         $this->entityLower = strtolower($this->entity);
         $this->eventNamespace = $this->resolveEventNamespace();
         $this->eventBasePath = $this->resolveEventBasePath();
+    }
+
+    /**
+     * Generate default notification settings key-value array from a manifest array.
+     * Ready to be ingested by SettingsHost during module installation in SchoolPalm.
+     *
+     * @param array<string, mixed> $manifest
+     * @return array<string, mixed>
+     */
+    public static function generateSettingsFromManifest(array $manifest): array
+    {
+        $settings = [];
+        $events = $manifest['events'] ?? [];
+
+        foreach ($events as $eventClass) {
+            if (! is_string($eventClass)) {
+                continue;
+            }
+
+            // 1. Resolve event identifier key (e.g. "student.created")
+            $eventKey = static::resolveEventKey($eventClass);
+
+            // 2. Extract defaults from class static methods or fallback
+            $defaults = static::extractDefaultsFromClass($eventClass);
+
+            // 3. Map settings
+            $settings["channels_enabled.{$eventKey}"] = $defaults['channels'] ?? ['email', 'in_app'];
+            $settings["priority.{$eventKey}"]         = $defaults['priority'] ?? 'normal';
+
+            if (! empty($defaults['templates'])) {
+                foreach ($defaults['templates'] as $channel => $template) {
+                    $settings["templates.{$eventKey}.{$channel}"] = $template;
+                }
+            } else {
+                $settings["templates.{$eventKey}.email"] = [
+                    'subject'   => "Notification: {$eventKey}",
+                    'content'   => "An event ({$eventKey}) was triggered.",
+                    'variables' => [],
+                ];
+                $settings["templates.{$eventKey}.in_app"] = "Event {$eventKey} was triggered.";
+            }
+        }
+
+        return $settings;
+    }
+
+    /**
+     * Convert event class FQCN to dot-notation event key.
+     * Example: Unnovatebrains\Common\Student\Backend\Events\Students\StudentCreatedEvent -> "student.created"
+     */
+    protected static function resolveEventKey(string $eventClass): string
+    {
+        if (defined("{$eventClass}::EVENT_KEY")) {
+            return constant("{$eventClass}::EVENT_KEY");
+        }
+
+        $className = class_basename($eventClass);
+        $cleanName = preg_replace('/Event$/', '', $className);
+        $snake = strtolower((string) preg_replace('/(?<!^)[A-Z]/', '_$0', $cleanName));
+
+        return str_replace('_', '.', $snake);
+    }
+
+    /**
+     * Extract defaults from class if class exists and implements setting extraction method.
+     */
+    protected static function extractDefaultsFromClass(string $eventClass): array
+    {
+        if (class_exists($eventClass)) {
+            $reflection = new ReflectionClass($eventClass);
+
+            if ($reflection->hasMethod('defaultNotificationSettings')) {
+                return $eventClass::defaultNotificationSettings();
+            }
+        }
+
+        return [];
     }
 
     /**
@@ -92,10 +171,10 @@ class EventGenerator
         foreach ($this->events as $action) {
             $eventClass = $this->entity . $action . 'Event';
             $eventPath = $this->getEventPath($eventClass);
-            
+
             // Generate event class (skip if exists)
             $this->generateEventClass($eventClass, $eventPath);
-            
+
             $generatedEvents[] = [
                 'class' => $this->eventNamespace . '\\' . $eventClass,
                 'action' => $action,
@@ -105,8 +184,6 @@ class EventGenerator
 
         // Store events in manifest
         $this->storeEventsInManifest($generatedEvents);
-
-    
 
         return $generatedEvents;
     }
@@ -176,10 +253,10 @@ PHP;
 
         // Get existing events or initialize
         $existingEvents = $existingManifest['events'] ?? [];
-        
+
         // Extract event class names
         $eventClasses = array_map(fn($e) => $e['class'], $events);
-        
+
         // Merge with existing
         $mergedEvents = array_unique(array_merge($existingEvents, $eventClasses));
 
@@ -303,13 +380,13 @@ PHP;
             'Restored' => 'restored',
             'ForceDeleted' => 'force deleted',
         ];
-        
+
         foreach ($actions as $action => $name) {
             if (str_contains($eventClass, $action)) {
                 return $name;
             }
         }
-        
+
         return strtolower($eventClass);
     }
 }
